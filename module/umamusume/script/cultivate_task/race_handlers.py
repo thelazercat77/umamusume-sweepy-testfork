@@ -84,6 +84,7 @@ def script_cultivate_goal_race(ctx: UmamusumeContext):
                 )
                 handle_energy_drink_max_before_race(ctx)
                 handle_glow_sticks_before_race(ctx)
+                handle_cleat_before_race(ctx, race_id, is_climax=True)
                 ctx.cultivate_detail.mant_climax_pending_train = True
                 ctx.cultivate_detail.turn_info.turn_operation.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_RACE
                 ctx.cultivate_detail.turn_info.turn_operation.race_id = 0
