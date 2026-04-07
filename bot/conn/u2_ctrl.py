@@ -326,12 +326,25 @@ class U2AndroidController(AndroidController):
             return True
         return False
 
-    def safety_dont_click(self, x, y):
+    def safety_dont_click(self, x, y, name):
+        name_lower = (name or "").lower()
+        # Block unexpected Rest clicks
+        if "rest" not in name_lower and 75 <= x <= 150 and 960 <= y <= 1020:
+            log.info(f"Blocked unexpected Rest click for {name} at {x}, {y}")
+            return True
+
+        # Block unexpected Recreation clicks - this area becomes the infirmary in summer so we have to handle it too...
+        allowed_keywords = ("recreation", "outing", "medic")
+        if not any(k in name_lower for k in allowed_keywords) and 245 <= x <= 310 and 1100 <= y <= 1135:
+            log.info(f"Blocked unexpected Recreation click for {name} at {x}, {y}")
+            return True
+
+        # Existing unsafe area check
         if 263 <= x <= 458 and 559 <= y <= 808:
             screen_gray = self.get_screen(to_gray=True)
             match = image_match(screen_gray, REF_DONT_CLICK)
             if getattr(match, "find_match", False):
-                log.info("unsafe click blocked")
+                log.info(f"Unsafe click blocked for {name} at {x}, {y}")
                 return True
         return False
 
@@ -437,7 +450,7 @@ class U2AndroidController(AndroidController):
             return
 
         try:
-            if self.safety_dont_click(x, y):
+            if self.safety_dont_click(x, y, name):
                 return
         except Exception as e:
             log.info("wtf")
