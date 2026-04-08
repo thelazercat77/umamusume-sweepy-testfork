@@ -1,8 +1,13 @@
-mumu seems to crash even when idle no bot no uma nothing. go use another emulator for now idk what.
-
-turn auto use items on for mant 
-
 # Sweepy — /vg/'s Uma Musume Bot (UAT REHASHED)
+
+This is a fork for Sweepy with a rewrite taken from [waivegames-oss/umamusume-sweepy](https://github.com/waivegames-oss/umamusume-sweepy). I'm not pulling in most upstream changes by default since most of the time the changes are broken and untested. Feature parity may be delayed or I may not even pull in some changes made if they're too low quality.
+
+Turn on auto-use items for MANT or the bot will break. You need to adjust the configurations as well but I don't have any good recommendations yet.
+
+## Known Bugs
+- Skills are not being bought at the end of the run always; not consistently happening so hard to fix with the spaghetti code.
+- MANT item use is still terrible, bot will use energy items outside of summer and waste megaphones.
+- Bot is still getting stuck on some screens, fallback should get it unstuck. Terrible event flow code currently.
 
 ### A umamusume bot that handles all aspects of gameplay including training, races, events, skill purchasing, and starting runs. 
 
@@ -74,19 +79,22 @@ winget install -e --id Python.Python.3.10
 Visual C++ Redistributable: https://aka.ms/vs/17/release/vc_redist.x64.exe
 ```
 
-### Step 3: Install Dependencies
+### Step 3: Set up the venv
 
 ```bash
-pip install -r requirements.txt
+python -m venv venv
+./venv/Scripts/python -m pip install --upgrade pip
 ```
 
-### Step 4: Run the Bot
+If you screw up dependencies, you can `rm -rf venv/` and do this again.
+
+### Step 4: Run the Bot via start.bat
 
 ```bash
-python main.py
+call start.bat
 ```
 
-Alternatively, run `start.bat` to launch the bot.
+You can also just run it directly from the Windows UI. Do **NOT** run this as admin; there is no need for it and its unsafe for you.
 
 ---
 
