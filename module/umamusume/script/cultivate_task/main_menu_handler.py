@@ -401,6 +401,13 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
                     else:
                         ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
             else:
+                if is_mant(ctx) and race_id == 0:
+                    log.info("Bot thinks we're in a Climax race but we're not, going to training instead.")
+                    ctx.cultivate_detail.turn_info.turn_operation = None
+                    base_energy, _, _ = scan_energy(ctx.ctrl)
+                    ctx.cultivate_detail.turn_info.base_energy = base_energy
+                    ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
+                    return
                 log.info(f"Proceeding with race operation (race_id: {race_id})")
                 ti = ctx.cultivate_detail.turn_info
                 op = ctx.cultivate_detail.turn_info.turn_operation
@@ -422,8 +429,11 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
                         delattr(ti, 'race_search_id')
                     return
                 if is_mant(ctx):
-                    from module.umamusume.scenario.mant.inventory import handle_energy_drink_max_before_race, handle_glow_sticks_before_race
+                    from module.umamusume.scenario.mant.inventory import (
+                        handle_cleat_before_race, handle_energy_drink_max_before_race, handle_glow_sticks_before_race
+                    )
                     handle_energy_drink_max_before_race(ctx)
                     handle_glow_sticks_before_race(ctx)
+                    handle_cleat_before_race(ctx, race_id)
                 is_summer = is_summer_camp_period(ctx.cultivate_detail.turn_info.date)
                 ctx.ctrl.click_by_point(get_race(ctx, summer=is_summer))
