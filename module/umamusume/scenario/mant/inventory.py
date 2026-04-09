@@ -862,11 +862,18 @@ def pick_best_energy_item(ctx):
     date = getattr(ctx.cultivate_detail.turn_info, 'date', 0)
     from module.umamusume.constants.game_constants import get_date_period_index
     period_idx = get_date_period_index(date)
+    cupcake_available = any(
+        owned_map.get(name, 0) > 0
+        for name in ('Berry Sweet Cupcake', 'Plain Cupcake')
+    )
 
     best_item = None
     best_effective = 0
     for item_name, raw_energy in ENERGY_ITEMS.items():
         if owned_map.get(item_name, 0) <= 0:
+            continue
+        if item_name == 'Royal Kale Juice' and not cupcake_available:
+            log.info("Skipping Royal Kale Juice - no cupcake available to compensate mood penalty")
             continue
         result_energy = current_energy + raw_energy
         if result_energy < energy_result_min:
@@ -986,6 +993,44 @@ def handle_energy_item(ctx):
     return use_item_and_update_inventory(ctx, item_name)
 
 
+def _get_selected_training_idx(ctx):
+    """Return the 0-based index of the currently selected training, or None."""
+    try:
+        op = getattr(ctx.cultivate_detail.turn_info, 'turn_operation', None)
+        if op is not None:
+            from module.umamusume.define import TrainingType
+            tt = getattr(op, 'training_type', None)
+            if tt is not None and tt != TrainingType.TRAINING_TYPE_UNKNOWN:
+                return tt.value - 1
+        # Fallback: cached training type set during score calculation
+        tt = getattr(ctx.cultivate_detail.turn_info, 'cached_training_type', None)
+        if tt is not None:
+            from module.umamusume.define import TrainingType
+            if tt != TrainingType.TRAINING_TYPE_UNKNOWN:
+                return tt.value - 1
+    except Exception:
+        pass
+    return None
+
+
+def _refresh_failure_rate_for_idx(ctx, selected_idx):
+    """Re-read failure rates from screen and return the updated rate for selected_idx (or -1)."""
+    try:
+        import time as _time
+        _time.sleep(0.3)
+        frame = ctx.ctrl.get_screen()
+        if frame is None:
+            return -1
+        from module.umamusume.script.cultivate_task.parse import parse_failure_rates
+        from module.umamusume.define import TrainingType
+        train_type = TrainingType(selected_idx + 1)
+        parse_failure_rates(ctx, frame, train_type)
+        til = ctx.cultivate_detail.turn_info.training_info_list[selected_idx]
+        return int(getattr(til, 'failure_rate', -1))
+    except Exception:
+        return -1
+
+
 def handle_energy_recovery(ctx):
     current_energy = getattr(ctx.cultivate_detail.turn_info, 'cached_energy', None)
     if current_energy is None:
@@ -1001,17 +1046,29 @@ def handle_energy_recovery(ctx):
     owned = getattr(ctx.cultivate_detail, 'mant_owned_items', [])
     owned_map = {n: q for n, q in owned}
 
+    cupcake_available = any(
+        owned_map.get(name, 0) > 0
+        for name in ('Berry Sweet Cupcake', 'Plain Cupcake')
+    )
+
     available = []
     for item_name, raw_energy in sorted(ENERGY_ITEMS.items(), key=lambda x: x[1], reverse=True):
         qty = owned_map.get(item_name, 0)
         if qty > 0:
+            if item_name == 'Royal Kale Juice' and not cupcake_available:
+                log.info("Skipping Royal Kale Juice in energy recovery - no cupcake available to compensate mood penalty")
+                continue
             available.append((item_name, raw_energy, qty))
 
     if not available:
         return False
 
+    # Determine which training slot to monitor failure rate for
+    selected_idx = _get_selected_training_idx(ctx)
+
     energy = current_energy
     used_any = False
+    failure_rate_zero = False
     for item_name, raw_energy, qty in available:
         while qty > 0 and energy <= limit:
             if energy + raw_energy > max_energy:
@@ -1023,15 +1080,31 @@ def handle_energy_recovery(ctx):
             qty -= 1
             used_any = True
             ctx.cultivate_detail.turn_info.cached_energy = energy
-        if energy > limit:
+            # Check if failure rate has reached 0% after this item — stop early if so
+            if selected_idx is not None:
+                fr = _refresh_failure_rate_for_idx(ctx, selected_idx)
+                if fr == 0:
+                    log.info(f"Failure rate reached 0% after using {item_name} - stopping energy item usage")
+                    failure_rate_zero = True
+                    break
+        if energy > limit or failure_rate_zero:
             break
 
-    if not used_any:
+    if not used_any and not failure_rate_zero:
+        # Check failure rate before using the fallback smallest item
+        if selected_idx is not None:
+            fr = int(getattr(ctx.cultivate_detail.turn_info.training_info_list[selected_idx], 'failure_rate', -1))
+            if fr == 0:
+                log.info("Failure rate already 0% - skipping fallback energy item")
+                return False
         smallest = available[-1]
         ok = use_item_and_update_inventory(ctx, smallest[0])
         if ok:
             used_any = True
             ctx.cultivate_detail.turn_info.cached_energy = energy + smallest[1]
+            # Refresh after fallback use too
+            if selected_idx is not None:
+                _refresh_failure_rate_for_idx(ctx, selected_idx)
 
     if used_any:
         ctx.cultivate_detail.turn_info.parse_main_menu_finish = False
@@ -1201,7 +1274,7 @@ def whistle_loop(ctx, start_date):
     return True
 
 
-def handle_cupcake_use(ctx):
+def handle_cupcake_use(ctx, for_training=False):
     from module.umamusume.scenario.mant.constants import get_incoming_mood
 
     cached_mood = getattr(ctx.cultivate_detail.turn_info, 'cached_mood', None)
@@ -1211,6 +1284,9 @@ def handle_cupcake_use(ctx):
         from bot.conn.fetch import read_mood
         mood = read_mood(ctx.current_screen)
     if mood is None or mood >= 5:
+        return False
+    # In MANT we get mood ups from racing, only use cupcakes if mood is too low
+    if not for_training and mood >= 3:
         return False
 
     date = getattr(ctx.cultivate_detail.turn_info, 'date', 0)
@@ -1296,7 +1372,12 @@ MEGA_STAT_MULT = {1: 1.20, 2: 1.40, 3: 1.60}
 def save_megaphone_scan_state_and_tick(ctx):
     ctx.cultivate_detail.turn_info._mega_scan_tier = getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0)
     ctx.cultivate_detail.turn_info._mega_scan_turns = getattr(ctx.cultivate_detail, 'mant_megaphone_turns', 0)
-    tick_megaphone(ctx)
+    
+    current_date = getattr(ctx.cultivate_detail.turn_info, 'date', -1)
+    last_tick_date = getattr(ctx.cultivate_detail, 'mant_megaphone_last_tick_date', -1)
+    if current_date != -1 and current_date != last_tick_date:
+        ctx.cultivate_detail.mant_megaphone_last_tick_date = current_date
+        tick_megaphone(ctx)
 
 
 def megaphone_reevaluate(ctx, current_op):
@@ -1372,11 +1453,12 @@ def remaining_training_turns(date):
     return (MANT_CLIMAX_START - date) + len(MANT_CLIMAX_TRAINING_TURNS)
 
 
-def total_megaphone_turns(owned_map):
+def total_megaphone_training_turns(owned_map):
     total = 0
     for name, (tier, duration) in MEGAPHONE_TIERS.items():
         qty = owned_map.get(name, 0)
-        total += qty * duration
+        training_turns_covered = (duration + 1) // 2
+        total += qty * training_turns_covered
     return total
 
 
@@ -1391,8 +1473,8 @@ def handle_megaphone_endgame(ctx):
         return False
 
     remaining = remaining_training_turns(date)
-    mega_turns = total_megaphone_turns(owned_map)
-    if mega_turns <= remaining:
+    inventory_coverage = total_megaphone_training_turns(owned_map)
+    if inventory_coverage < remaining:
         return False
 
     for name, (tier, duration) in sorted(MEGAPHONE_TIERS.items(), key=lambda x: x[1][0]):
@@ -1405,8 +1487,10 @@ def handle_megaphone_endgame(ctx):
             ctx.cultivate_detail.mant_megaphone_tier = tier
             ctx.cultivate_detail.mant_megaphone_turns = duration
             log.info(f"endgame megaphone dump: tier {tier} for {duration} turns")
+            current_date = getattr(ctx.cultivate_detail.turn_info, 'date', -1)
+            ctx.cultivate_detail.mant_megaphone_last_tick_date = current_date
             from module.umamusume.persistence import save_megaphone_state
-            save_megaphone_state(tier, duration)
+            save_megaphone_state(tier, duration, current_date)
         return ok
 
     return False
@@ -1454,10 +1538,11 @@ def handle_megaphone(ctx):
         if owned_map.get(name, 0) <= 0:
             continue
 
-        if not is_summer and not is_after_second_summer and tier >= 2:
+        reserve_megaphones = getattr(mant_cfg, 'reserve_megaphones_for_summer', True)
+        if reserve_megaphones and not is_summer and not is_after_second_summer and tier >= 2:
             best_mega_count = sum(owned_map.get(n, 0) for n, (t, _) in MEGAPHONE_TIERS.items() if t >= 2)
             if best_mega_count <= 2:
-                log.info(f"Only have {best_mega_count} megaphones, saving for summer camp.")
+                log.info(f"Only have {best_mega_count} megaphones, saving for summer camp (reserve_megaphones_for_summer flag is True).")
                 continue
 
         cfg_key = MEGAPHONE_CONFIG_KEYS[tier]
@@ -1502,8 +1587,10 @@ def handle_megaphone(ctx):
         ctx.cultivate_detail.mant_megaphone_tier = best_tier
         ctx.cultivate_detail.mant_megaphone_turns = duration
         log.info(f"megaphone active: tier {best_tier} for {duration} turns")
+        current_date = getattr(ctx.cultivate_detail.turn_info, 'date', -1)
+        ctx.cultivate_detail.mant_megaphone_last_tick_date = current_date
         from module.umamusume.persistence import save_megaphone_state
-        save_megaphone_state(best_tier, duration)
+        save_megaphone_state(best_tier, duration, current_date)
     return ok
 
 
@@ -1548,7 +1635,8 @@ def tick_megaphone(ctx):
         if active_turns <= 0:
             ctx.cultivate_detail.mant_megaphone_tier = 0
         from module.umamusume.persistence import save_megaphone_state
-        save_megaphone_state(getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0), active_turns)
+        last_tick_date = getattr(ctx.cultivate_detail, 'mant_megaphone_last_tick_date', -1)
+        save_megaphone_state(getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0), active_turns, last_tick_date)
 
 
 def item_loop(ctx):
@@ -1572,6 +1660,7 @@ def item_loop(ctx):
     if whistle_used:
         return
 
+    handle_cupcake_use(ctx, for_training=True)
     handle_megaphone(ctx)
     handle_anklet(ctx)
     

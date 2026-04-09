@@ -202,6 +202,7 @@ class CultivateContextDetail:
         self.sp_burst_skill_purchased = False
 
 
+
     def reset_skill_learn(self):
         self.learn_skill_done = False
         self.learn_skill_selected = False
@@ -320,13 +321,15 @@ def build_context(task: UmamusumeTask, ctrl) -> UmamusumeContext:
         
         try:
             from module.umamusume.persistence import load_megaphone_state
-            mega_tier, mega_turns = load_megaphone_state()
+            mega_tier, mega_turns, mega_last_date = load_megaphone_state()
             detail.mant_megaphone_tier = mega_tier
             detail.mant_megaphone_turns = mega_turns
+            detail.mant_megaphone_last_tick_date = mega_last_date
             if mega_tier > 0 and mega_turns > 0:
                 log.info("Restored megaphone state")
         except Exception:
             detail.mant_megaphone_tier = 0
             detail.mant_megaphone_turns = 0
+            detail.mant_megaphone_last_tick_date = -1
 
     return ctx

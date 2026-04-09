@@ -148,16 +148,16 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
         log.info("extra race this turn, prioritizing")
         if ctx.cultivate_detail.turn_info.turn_operation is None:
             ctx.cultivate_detail.turn_info.turn_operation = TurnOperation()
-        ctx.cultivate_detail.turn_info.turn_operation.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_RACE
-        matching_races = [race_id for race_id in ctx.cultivate_detail.extra_race_list if race_id in ctx.cultivate_detail.turn_info.cached_available_races]
-        if matching_races:
-            target_race_id = matching_races[0]
-            ctx.cultivate_detail.turn_info.turn_operation.race_id = target_race_id
-            log.info(f"Set race: {target_race_id}")
-        else:
-            log.info("extra race not in available races")
-        ctx.cultivate_detail.turn_info.parse_train_info_finish = True
-        return
+            ctx.cultivate_detail.turn_info.turn_operation.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_RACE
+            matching_races = [race_id for race_id in ctx.cultivate_detail.extra_race_list if race_id in ctx.cultivate_detail.turn_info.cached_available_races]
+            if matching_races:
+                target_race_id = matching_races[0]
+                ctx.cultivate_detail.turn_info.turn_operation.race_id = target_race_id
+                log.info(f"Set race: {target_race_id}")
+            else:
+                log.info("extra race not in available races")
+            ctx.cultivate_detail.turn_info.parse_train_info_finish = True
+
     if has_extra_race and is_mant(ctx):
         log.info("MANT: extra race available but scanning training first")
 
@@ -211,9 +211,6 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
         if should_use_team_sirius_recreation(ctx):
             if execute_team_sirius_recreation(ctx, trip_click_point=get_trip(ctx)):
                 return
-        if getattr(ctx.cultivate_detail, 'team_sirius_enabled', False):
-            if execute_regular_recreation(ctx, trip_click_point=get_trip(ctx)):
-                return
         if should_use_pal_outing_simple(ctx):
             ctx.ctrl.click_by_point(get_trip(ctx))
             return
@@ -225,6 +222,9 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
     
     if turn_operation is not None and turn_operation.turn_operation_type == TurnOperationType.TURN_OPERATION_TYPE_TRIP:
         log.info("Executing trip operation")
+        if should_use_team_sirius_recreation(ctx):
+            if execute_team_sirius_recreation(ctx, trip_click_point=get_trip(ctx)):
+                return
         if is_summer_camp_period(ctx.cultivate_detail.turn_info.date):
             ctx.ctrl.click(68, 991, "Summer Camp")
         else:
@@ -287,10 +287,6 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
             if should_use_team_sirius_recreation(ctx):
                 if execute_team_sirius_recreation(ctx, trip_click_point=get_trip(ctx)):
                     log.info(f"Energy at {round(energy, 2)} (below limit of {limit}), decision made to use Team Sirius recreation.")
-                    return
-            if getattr(ctx.cultivate_detail, 'team_sirius_enabled', False):
-                if execute_regular_recreation(ctx, trip_click_point=get_trip(ctx)):
-                    log.info(f"Energy at {round(energy, 2)} (below limit of {limit}), decision made to use regular recreation.")
                     return
             if should_use_pal_outing_simple(ctx):
                 log.info(f"Energy at {round(energy, 2)} (below limit of {limit}), decision made to use pal card recreation.")
@@ -402,11 +398,10 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
                         ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
             else:
                 if is_mant(ctx) and race_id == 0:
-                    log.info("Bot thinks we're in a Climax race but we're not, going to training instead.")
+                    log.info("Bot thinks we're in a Climax race but we're not, resetting to run MANT flow.")
                     ctx.cultivate_detail.turn_info.turn_operation = None
-                    base_energy, _, _ = scan_energy(ctx.ctrl)
-                    ctx.cultivate_detail.turn_info.base_energy = base_energy
-                    ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
+                    ctx.cultivate_detail.turn_info.parse_train_info_finish = False
+                    ctx.cultivate_detail.turn_info.parse_main_menu_finish = False
                     return
                 log.info(f"Proceeding with race operation (race_id: {race_id})")
                 ti = ctx.cultivate_detail.turn_info

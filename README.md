@@ -7,20 +7,26 @@ Turn on auto-use items for MANT or the bot will break. You need to adjust the co
 ## Known Bugs
 
 - Skills are sometimes not being bought at the end of the run; this happens very rarely. Still verifying if this is fixed.
-- Bot is still getting stuck on some screens, fallback should get it unstuck. Should mostly be fixed now. 
+- Bot is still getting stuck on some screens, fallback should get it unstuck. I'm fixing these as I see them.
+- Clock usage is not implemented in MANT yet. I wouldn't trust my clocks to it, so it's not a high priority.
 - URA/Unity are not tested and may not work. This only works for MANT.
 
 ## Added Features / Changes from core Sweepy
 
-These features below do not have toggles (yet) because I'm making this for myself since I know what the optimal pattern generally is. You can't really trust the bot to be as smart as a human so it's better to just idiot proof it instead of trying to make it handle edge cases. We want consistency over high rolls. Here's what's changed so far that's worth noting:
+Here's what's changed so far that's worth noting, most of the new bot features have options to toggle them off (not yet added in the UI):
 
-- Bot will always save two T2/T3 megaphones for summer training instead of wasting them on terrible training.
+- Bot will save two T2/T3 megaphones for summer training instead of wasting them on terrible training.
 - Bot buys the first T1/T2 megaphone on the first shop turn if available and uses it.
 - Bot now checks training **before** using energy items, so it won't waste energy items on bad training (skips training in the bottom 35th percentile).
 - Bot now properly goes to race even if there's no energy items in MANT (this was a bug they wouldn't fix).
+- Bot buys stat items early if there's available budget and will prioritize buying items that expire earlier if it's racing.
+- Bot no longer uses cupcakes to raise mood if it's not going to train and relies on racing first to raise mood (unless it's too low).
+- Bot now only uses Royal Kale Juice if it has a cupcake available to use afterwards.
 - Reverted some awful code written for template matching that was "faster" but broke randomly because it rejected matches too aggressively.
 - Updated the MANT tier defaults because I was tired of updating the tiers and moving items around to make them sane.
 - Fixed some bugs with TS Climax races where it tried to go to race early, wouldn't use hammer cleats, and other weirdness.
+- Fixed a bug with megaphone turn tracking that was causing it to double decrement and messing up the turn logic.
+- Fixed a bug with using too many energy items and amulets because it wasn't checking the new failure rate.
 - Safety click checks have been added for Rest and Recreation. This was due to the old code using unsafe areas to click on.
 - You can now install the Python dependencies in `venv` and just run `start.bat` without polluting your core Python install.
 
@@ -28,7 +34,7 @@ This list does not include the changes from [waivegames-oss/umamusume-sweepy](ht
 
 ### A Umamusume bot that handles all aspects of gameplay including training, races, events, skill purchasing, and starting runs. 
 
-MANT is very far from being complete but it is functional and is probably better for parent farming compared to Aoharu.
+MANT support is a work in progress. It works but it's still mainly putting out S ranks. The bot is still just terrible at picking the proper trainings and I haven't demystified the meaning of stat limits or how to get it to properly pick the best trainings. I think it's overcomplicated and probably needs to be made simpler but I'm avoiding touching that for now.
 
 ![Uma Musume Auto Trainer](docs/main.png)
 

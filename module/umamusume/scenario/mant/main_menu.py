@@ -98,8 +98,9 @@ def handle_mant_turn_start(ctx, current_date):
         for name, conf, gy, turns, buyable in ctx.cultivate_detail.mant_shop_items:
             if turns == 99:
                 updated.append((name, conf, gy, turns, buyable))
-            elif turns > 1:
-                updated.append((name, conf, gy, turns - 1, buyable))
+            elif turns >= 1:
+                # Keep turns==1 items — they expire this turn and must still be visible to handle_mant_emergency_shop_buys.
+                updated.append((name, conf, gy, turns - 1 if turns > 1 else 1, buyable))
         ctx.cultivate_detail.mant_shop_items = updated
 
         from module.umamusume.context import log_detected_shop_items
@@ -223,7 +224,8 @@ def handle_mant_shop_scan(ctx, current_date):
         coaching_megaphone_forced = False
         target_megaphone_name = None
 
-        if is_first_shop_turn:
+        buy_first_megaphone = getattr(mant_cfg, 'buy_first_megaphone', True)
+        if is_first_shop_turn and buy_first_megaphone:
             log.info("First shop turn: checking for megaphone")
             target_megaphone_name = next((m for m in ("Coaching Megaphone", "Motivating Megaphone") if m in shop_available), None)
             if target_megaphone_name and target_megaphone_name not in priority_targets:
@@ -296,6 +298,22 @@ def handle_mant_shop_scan(ctx, current_date):
 
         tier_targets = []
 
+        # Build minimum-turns map for all buyable shop items (99 = no expiry)
+        min_turns_for_item = {}
+        for _n, _c, _g, _t, _b in items_list:
+            if _b:
+                if _n not in min_turns_for_item or _t < min_turns_for_item[_n]:
+                    min_turns_for_item[_n] = _t
+
+        # Determine if this turn is a race turn for race-coin lookahead
+        from module.umamusume.define import TurnOperationType
+        _turn_op = getattr(ctx.cultivate_detail.turn_info, 'turn_operation', None)
+        is_race_turn = (
+            _turn_op is not None and
+            getattr(_turn_op, 'turn_operation_type', None) == TurnOperationType.TURN_OPERATION_TYPE_RACE
+        )
+        race_reward_estimate = getattr(mant_cfg, 'race_reward_estimate', 80)
+
         if bbq_effective_tier is not None and bbq_effective_tier <= 0:
             bbq_display = "Grilled Carrots"
             bbq_slug = "grilled_carrots"
@@ -309,6 +327,8 @@ def handle_mant_shop_scan(ctx, current_date):
                     budget -= cost
 
         for tier in range(1, mant_cfg.tier_count + 1):
+            # Collect candidates for this tier, then sort by urgency (ascending turns)
+            tier_candidates = []
             for slug, t in mant_cfg.item_tiers.items():
                 if slug == "grilled_carrots" and bbq_effective_tier is not None:
                     if bbq_effective_tier <= 0 or bbq_effective_tier > mant_cfg.tier_count:
@@ -329,7 +349,12 @@ def handle_mant_shop_scan(ctx, current_date):
                     continue
                 if skip_cupcakes and display in cupcake_names:
                     continue
+                tier_candidates.append((min_turns_for_item.get(display, 99), display))
 
+            # Sooner-expiring items first; ties broken alphabetically for determinism
+            tier_candidates.sort()
+
+            for _turns_key, display in tier_candidates:
                 cost = SHOP_ITEM_COSTS.get(display, 9999)
                 copies = shop_copy_counts.get(display, 0)
                 if copies <= 0:
@@ -339,6 +364,17 @@ def handle_mant_shop_scan(ctx, current_date):
                 for i in range(actual_copies):
                     remaining_after = budget - cost
                     if remaining_after < 0:
+                        # Can't afford now — check race-coin lookahead before giving up
+                        item_turns = min_turns_for_item.get(display, 99)
+                        if (is_race_turn
+                                and item_turns > 1
+                                and (budget + race_reward_estimate - cost) >= 0):
+                            log.info(
+                                f"Race-coin lookahead: deferring {display} "
+                                f"(turns={item_turns}, cost={cost}, "
+                                f"budget={budget}, est_reward={race_reward_estimate}) "
+                                f"— emergency shop will retry post-race"
+                            )
                         break
                     threshold = 0
                     if tier > 1 and not post_senior_summer:
@@ -461,15 +497,18 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
 
     mant_cfg = getattr(ctx.task.detail.scenario_config, 'mant_config', None)
     if mant_cfg and mant_cfg.item_tiers:
-        expiring = {name for name, _, _, turns, buyable in shop_items
-                    if turns == 1 and buyable}
-        if expiring:
+        buy_stat_early = getattr(mant_cfg, 'buy_stat_items_early', True)
+        stat_kw = ("Notepad", "Manual", "Scroll")
+        
+        items = {name for name, _, _, turns, buyable in shop_items
+                 if buyable and (turns == 1 or (buy_stat_early and any(kw in name for kw in stat_kw)))}
+        if items:
             shop_slugs = {display_to_slug(n) for n, _, _, _, buyable in shop_items
                           if buyable}
-            expiring_counts = {}
+            item_counts = {}
             for name, _, _, turns, buyable in shop_items:
-                if name in expiring and buyable:
-                    expiring_counts[name] = expiring_counts.get(name, 0) + 1
+                if name in items and buyable:
+                    item_counts[name] = item_counts.get(name, 0) + 1
             from module.umamusume.constants.game_constants import SUMMER_CAMP_2_END
             post_senior_summer = current_date > SUMMER_CAMP_2_END
 
@@ -492,9 +531,9 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
         
             if bbq_eff_em is not None and bbq_eff_em <= 0 and not ignore_grilled_carrots_em:
                 bbq_display_em = SLUG_TO_DISPLAY.get("grilled_carrots")
-                if bbq_display_em and bbq_display_em in expiring and bbq_display_em in shop_slugs:
+                if bbq_display_em and bbq_display_em in items and bbq_display_em in shop_slugs:
                     cost_em = SHOP_ITEM_COSTS.get(bbq_display_em, 9999)
-                    copies_em = expiring_counts.get(bbq_display_em, 0)
+                    copies_em = item_counts.get(bbq_display_em, 0)
                     for _ in range(copies_em):
                         if tmp_budget - cost_em < 0:
                             break
@@ -515,7 +554,7 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
                     if effective_tier_em != tier or slug not in shop_slugs:
                         continue
                     display = SLUG_TO_DISPLAY.get(slug)
-                    if not display or display not in expiring:
+                    if not display or display not in items:
                         continue
                     if display in set(AILMENT_CURE_MAP.values()) or display == AILMENT_CURE_ALL:
                         continue
@@ -529,7 +568,7 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
                             continue
 
                     cost = SHOP_ITEM_COSTS.get(display, 9999)
-                    copies = expiring_counts.get(display, 0)
+                    copies = item_counts.get(display, 0)
                     if copies <= 0:
                         continue
 
