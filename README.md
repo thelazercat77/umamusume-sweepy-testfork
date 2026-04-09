@@ -13,16 +13,20 @@ Turn on auto-use items for MANT or the bot will break. You need to adjust the co
 
 ## Added Features / Changes from core Sweepy
 
-These features below do not have toggles (yet) because I'm making this for myself since I know what the optimal pattern generally is. You can't really trust the bot to be as smart as a human so it's better to just idiot proof it instead of trying to make it handle edge cases. We want consistency over high rolls. Here's what's changed so far that's worth noting:
+Here's what's changed so far that's worth noting, most of the new bot features have options to toggle them off (not yet added in the UI):
 
-- Bot will always save two T2/T3 megaphones for summer training instead of wasting them on terrible training.
+- Bot will save two T2/T3 megaphones for summer training instead of wasting them on terrible training.
 - Bot buys the first T1/T2 megaphone on the first shop turn if available and uses it.
 - Bot now checks training **before** using energy items, so it won't waste energy items on bad training (skips training in the bottom 35th percentile).
 - Bot now properly goes to race even if there's no energy items in MANT (this was a bug they wouldn't fix).
+- Bot buys stat items early if there's available budget and will prioritize buying items that expire earlier if it's racing.
+- Bot no longer uses cupcakes to raise mood if it's not going to train and relies on racing first to raise mood (unless it's too low).
+- Bot now only uses Royal Kale Juice if it has a cupcake available to use afterwards.
 - Reverted some awful code written for template matching that was "faster" but broke randomly because it rejected matches too aggressively.
 - Updated the MANT tier defaults because I was tired of updating the tiers and moving items around to make them sane.
 - Fixed some bugs with TS Climax races where it tried to go to race early, wouldn't use hammer cleats, and other weirdness.
 - Fixed a bug with megaphone turn tracking that was causing it to double decrement and messing up the turn logic.
+- Fixed a bug with using too many energy items and amulets because it wasn't checking the new failure rate.
 - Safety click checks have been added for Rest and Recreation. This was due to the old code using unsafe areas to click on.
 - You can now install the Python dependencies in `venv` and just run `start.bat` without polluting your core Python install.
 
