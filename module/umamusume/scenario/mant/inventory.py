@@ -1296,7 +1296,12 @@ MEGA_STAT_MULT = {1: 1.20, 2: 1.40, 3: 1.60}
 def save_megaphone_scan_state_and_tick(ctx):
     ctx.cultivate_detail.turn_info._mega_scan_tier = getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0)
     ctx.cultivate_detail.turn_info._mega_scan_turns = getattr(ctx.cultivate_detail, 'mant_megaphone_turns', 0)
-    tick_megaphone(ctx)
+    
+    current_date = getattr(ctx.cultivate_detail.turn_info, 'date', -1)
+    last_tick_date = getattr(ctx.cultivate_detail, 'mant_megaphone_last_tick_date', -1)
+    if current_date != -1 and current_date != last_tick_date:
+        ctx.cultivate_detail.mant_megaphone_last_tick_date = current_date
+        tick_megaphone(ctx)
 
 
 def megaphone_reevaluate(ctx, current_op):
@@ -1405,8 +1410,10 @@ def handle_megaphone_endgame(ctx):
             ctx.cultivate_detail.mant_megaphone_tier = tier
             ctx.cultivate_detail.mant_megaphone_turns = duration
             log.info(f"endgame megaphone dump: tier {tier} for {duration} turns")
+            current_date = getattr(ctx.cultivate_detail.turn_info, 'date', -1)
+            ctx.cultivate_detail.mant_megaphone_last_tick_date = current_date
             from module.umamusume.persistence import save_megaphone_state
-            save_megaphone_state(tier, duration)
+            save_megaphone_state(tier, duration, current_date)
         return ok
 
     return False
@@ -1502,8 +1509,10 @@ def handle_megaphone(ctx):
         ctx.cultivate_detail.mant_megaphone_tier = best_tier
         ctx.cultivate_detail.mant_megaphone_turns = duration
         log.info(f"megaphone active: tier {best_tier} for {duration} turns")
+        current_date = getattr(ctx.cultivate_detail.turn_info, 'date', -1)
+        ctx.cultivate_detail.mant_megaphone_last_tick_date = current_date
         from module.umamusume.persistence import save_megaphone_state
-        save_megaphone_state(best_tier, duration)
+        save_megaphone_state(best_tier, duration, current_date)
     return ok
 
 
@@ -1548,7 +1557,8 @@ def tick_megaphone(ctx):
         if active_turns <= 0:
             ctx.cultivate_detail.mant_megaphone_tier = 0
         from module.umamusume.persistence import save_megaphone_state
-        save_megaphone_state(getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0), active_turns)
+        last_tick_date = getattr(ctx.cultivate_detail, 'mant_megaphone_last_tick_date', -1)
+        save_megaphone_state(getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0), active_turns, last_tick_date)
 
 
 def item_loop(ctx):
