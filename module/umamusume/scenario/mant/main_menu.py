@@ -98,8 +98,9 @@ def handle_mant_turn_start(ctx, current_date):
         for name, conf, gy, turns, buyable in ctx.cultivate_detail.mant_shop_items:
             if turns == 99:
                 updated.append((name, conf, gy, turns, buyable))
-            elif turns > 1:
-                updated.append((name, conf, gy, turns - 1, buyable))
+            elif turns >= 1:
+                # Keep turns==1 items — they expire this turn and must still be visible to handle_mant_emergency_shop_buys.
+                updated.append((name, conf, gy, turns - 1 if turns > 1 else 1, buyable))
         ctx.cultivate_detail.mant_shop_items = updated
 
         from module.umamusume.context import log_detected_shop_items
