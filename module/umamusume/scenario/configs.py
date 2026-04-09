@@ -35,6 +35,7 @@ class MantConfig:
     skip_race_percentile: int
     mega_race_penalty: int
     mega_summer_bonus: int
+    race_reward_estimate: int
 
     def __init__(self, config: dict):
         self.item_tiers = config.get("item_tiers", {})
@@ -55,6 +56,7 @@ class MantConfig:
         raw_thresholds = config.get("tier_thresholds", {})
         self.tier_thresholds = {int(k): v for k, v in raw_thresholds.items()}
         self.skip_race_percentile = config.get("skip_race_percentile", 0)
+        self.race_reward_estimate = config.get("race_reward_estimate", 80)
 
 
 class ScenarioConfig:

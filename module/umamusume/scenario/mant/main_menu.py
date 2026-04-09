@@ -297,6 +297,22 @@ def handle_mant_shop_scan(ctx, current_date):
 
         tier_targets = []
 
+        # Build minimum-turns map for all buyable shop items (99 = no expiry)
+        min_turns_for_item = {}
+        for _n, _c, _g, _t, _b in items_list:
+            if _b:
+                if _n not in min_turns_for_item or _t < min_turns_for_item[_n]:
+                    min_turns_for_item[_n] = _t
+
+        # Determine if this turn is a race turn for race-coin lookahead
+        from module.umamusume.define import TurnOperationType
+        _turn_op = getattr(ctx.cultivate_detail.turn_info, 'turn_operation', None)
+        is_race_turn = (
+            _turn_op is not None and
+            getattr(_turn_op, 'turn_operation_type', None) == TurnOperationType.TURN_OPERATION_TYPE_RACE
+        )
+        race_reward_estimate = getattr(mant_cfg, 'race_reward_estimate', 80)
+
         if bbq_effective_tier is not None and bbq_effective_tier <= 0:
             bbq_display = "Grilled Carrots"
             bbq_slug = "grilled_carrots"
@@ -310,6 +326,8 @@ def handle_mant_shop_scan(ctx, current_date):
                     budget -= cost
 
         for tier in range(1, mant_cfg.tier_count + 1):
+            # Collect candidates for this tier, then sort by urgency (ascending turns)
+            tier_candidates = []
             for slug, t in mant_cfg.item_tiers.items():
                 if slug == "grilled_carrots" and bbq_effective_tier is not None:
                     if bbq_effective_tier <= 0 or bbq_effective_tier > mant_cfg.tier_count:
@@ -330,7 +348,12 @@ def handle_mant_shop_scan(ctx, current_date):
                     continue
                 if skip_cupcakes and display in cupcake_names:
                     continue
+                tier_candidates.append((min_turns_for_item.get(display, 99), display))
 
+            # Sooner-expiring items first; ties broken alphabetically for determinism
+            tier_candidates.sort()
+
+            for _turns_key, display in tier_candidates:
                 cost = SHOP_ITEM_COSTS.get(display, 9999)
                 copies = shop_copy_counts.get(display, 0)
                 if copies <= 0:
@@ -340,6 +363,17 @@ def handle_mant_shop_scan(ctx, current_date):
                 for i in range(actual_copies):
                     remaining_after = budget - cost
                     if remaining_after < 0:
+                        # Can't afford now — check race-coin lookahead before giving up
+                        item_turns = min_turns_for_item.get(display, 99)
+                        if (is_race_turn
+                                and item_turns > 1
+                                and (budget + race_reward_estimate - cost) >= 0):
+                            log.info(
+                                f"Race-coin lookahead: deferring {display} "
+                                f"(turns={item_turns}, cost={cost}, "
+                                f"budget={budget}, est_reward={race_reward_estimate}) "
+                                f"— emergency shop will retry post-race"
+                            )
                         break
                     threshold = 0
                     if tier > 1 and not post_senior_summer:
