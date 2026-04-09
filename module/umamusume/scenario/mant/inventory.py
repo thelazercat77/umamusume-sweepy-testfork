@@ -986,6 +986,44 @@ def handle_energy_item(ctx):
     return use_item_and_update_inventory(ctx, item_name)
 
 
+def _get_selected_training_idx(ctx):
+    """Return the 0-based index of the currently selected training, or None."""
+    try:
+        op = getattr(ctx.cultivate_detail.turn_info, 'turn_operation', None)
+        if op is not None:
+            from module.umamusume.define import TrainingType
+            tt = getattr(op, 'training_type', None)
+            if tt is not None and tt != TrainingType.TRAINING_TYPE_UNKNOWN:
+                return tt.value - 1
+        # Fallback: cached training type set during score calculation
+        tt = getattr(ctx.cultivate_detail.turn_info, 'cached_training_type', None)
+        if tt is not None:
+            from module.umamusume.define import TrainingType
+            if tt != TrainingType.TRAINING_TYPE_UNKNOWN:
+                return tt.value - 1
+    except Exception:
+        pass
+    return None
+
+
+def _refresh_failure_rate_for_idx(ctx, selected_idx):
+    """Re-read failure rates from screen and return the updated rate for selected_idx (or -1)."""
+    try:
+        import time as _time
+        _time.sleep(0.3)
+        frame = ctx.ctrl.get_screen()
+        if frame is None:
+            return -1
+        from module.umamusume.script.cultivate_task.parse import parse_failure_rates
+        from module.umamusume.define import TrainingType
+        train_type = TrainingType(selected_idx + 1)
+        parse_failure_rates(ctx, frame, train_type)
+        til = ctx.cultivate_detail.turn_info.training_info_list[selected_idx]
+        return int(getattr(til, 'failure_rate', -1))
+    except Exception:
+        return -1
+
+
 def handle_energy_recovery(ctx):
     current_energy = getattr(ctx.cultivate_detail.turn_info, 'cached_energy', None)
     if current_energy is None:
@@ -1010,8 +1048,12 @@ def handle_energy_recovery(ctx):
     if not available:
         return False
 
+    # Determine which training slot to monitor failure rate for
+    selected_idx = _get_selected_training_idx(ctx)
+
     energy = current_energy
     used_any = False
+    failure_rate_zero = False
     for item_name, raw_energy, qty in available:
         while qty > 0 and energy <= limit:
             if energy + raw_energy > max_energy:
@@ -1023,15 +1065,31 @@ def handle_energy_recovery(ctx):
             qty -= 1
             used_any = True
             ctx.cultivate_detail.turn_info.cached_energy = energy
-        if energy > limit:
+            # Check if failure rate has reached 0% after this item — stop early if so
+            if selected_idx is not None:
+                fr = _refresh_failure_rate_for_idx(ctx, selected_idx)
+                if fr == 0:
+                    log.info(f"Failure rate reached 0% after using {item_name} - stopping energy item usage")
+                    failure_rate_zero = True
+                    break
+        if energy > limit or failure_rate_zero:
             break
 
-    if not used_any:
+    if not used_any and not failure_rate_zero:
+        # Check failure rate before using the fallback smallest item
+        if selected_idx is not None:
+            fr = int(getattr(ctx.cultivate_detail.turn_info.training_info_list[selected_idx], 'failure_rate', -1))
+            if fr == 0:
+                log.info("Failure rate already 0% - skipping fallback energy item")
+                return False
         smallest = available[-1]
         ok = use_item_and_update_inventory(ctx, smallest[0])
         if ok:
             used_any = True
             ctx.cultivate_detail.turn_info.cached_energy = energy + smallest[1]
+            # Refresh after fallback use too
+            if selected_idx is not None:
+                _refresh_failure_rate_for_idx(ctx, selected_idx)
 
     if used_any:
         ctx.cultivate_detail.turn_info.parse_main_menu_finish = False
