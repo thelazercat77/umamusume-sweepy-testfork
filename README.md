@@ -6,13 +6,13 @@ Turn on auto-use items for MANT or the bot will break. You need to adjust the co
 
 ## Known Bugs
 
-- Skills are sometimes not being bought at the end of the run; happening fairly rarely so hard to fix with the current spaghetti code.
-- Bot is still getting stuck on some screens, fallback should get it unstuck. Terrible event flow code currently.
+- Skills are sometimes not being bought at the end of the run; this happens very rarely. Still verifying if this is fixed.
+- Bot is still getting stuck on some screens, fallback should get it unstuck. Should mostly be fixed now. 
 - URA/Unity are not tested and may not work. This only works for MANT.
 
 ## Added Features / Changes from core Sweepy
 
-These features below do not have toggles (yet) because I'm making this for myself since I know what the optimal play pattern is and you can't really trust the bot to be that smart unfortunately so it's better to just idiot proof it instead of trying to make it handle edge cases (we want consistency over high rolls). Here's what's changed so far that's worth noting (this does not include the changes from [waivegames-oss/umamusume-sweepy](https://github.com/waivegames-oss/umamusume-sweepy) which were primarily fixes for event handling and the MANT shop):
+These features below do not have toggles (yet) because I'm making this for myself since I know what the optimal pattern generally is. You can't really trust the bot to be as smart as a human so it's better to just idiot proof it instead of trying to make it handle edge cases. We want consistency over high rolls. Here's what's changed so far that's worth noting:
 
 - Bot will always save two T2/T3 megaphones for summer training instead of wasting them on terrible training.
 - Bot buys the first T1/T2 megaphone on the first shop turn if available and uses it.
@@ -23,6 +23,8 @@ These features below do not have toggles (yet) because I'm making this for mysel
 - Fixed some bugs with TS Climax races where it tried to go to race early, wouldn't use hammer cleats, and other weirdness.
 - Safety click checks have been added for Rest and Recreation. This was due to the old code using unsafe areas to click on.
 - You can now install the Python dependencies in `venv` and just run `start.bat` without polluting your core Python install.
+
+This list does not include the changes from [waivegames-oss/umamusume-sweepy](https://github.com/waivegames-oss/umamusume-sweepy) which were primarily fixes for event handling and the MANT shop.
 
 ### A Umamusume bot that handles all aspects of gameplay including training, races, events, skill purchasing, and starting runs. 
 
