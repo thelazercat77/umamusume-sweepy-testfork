@@ -1377,11 +1377,12 @@ def remaining_training_turns(date):
     return (MANT_CLIMAX_START - date) + len(MANT_CLIMAX_TRAINING_TURNS)
 
 
-def total_megaphone_turns(owned_map):
+def total_megaphone_training_turns(owned_map):
     total = 0
     for name, (tier, duration) in MEGAPHONE_TIERS.items():
         qty = owned_map.get(name, 0)
-        total += qty * duration
+        training_turns_covered = (duration + 1) // 2
+        total += qty * training_turns_covered
     return total
 
 
@@ -1396,8 +1397,8 @@ def handle_megaphone_endgame(ctx):
         return False
 
     remaining = remaining_training_turns(date)
-    mega_turns = total_megaphone_turns(owned_map)
-    if mega_turns <= remaining:
+    inventory_coverage = total_megaphone_training_turns(owned_map)
+    if inventory_coverage < remaining:
         return False
 
     for name, (tier, duration) in sorted(MEGAPHONE_TIERS.items(), key=lambda x: x[1][0]):
