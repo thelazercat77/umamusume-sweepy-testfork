@@ -7,7 +7,8 @@ Turn on auto-use items for MANT or the bot will break. You need to adjust the co
 ## Known Bugs
 
 - Skills are sometimes not being bought at the end of the run; this happens very rarely. Still verifying if this is fixed.
-- Bot is still getting stuck on some screens, fallback should get it unstuck. Should mostly be fixed now. 
+- Bot is still getting stuck on some screens, fallback should get it unstuck. I'm fixing these as I see them.
+- Clock usage is not implemented in MANT yet. I wouldn't trust my clocks to it, so it's not a high priority.
 - URA/Unity are not tested and may not work. This only works for MANT.
 
 ## Added Features / Changes from core Sweepy
@@ -21,6 +22,7 @@ These features below do not have toggles (yet) because I'm making this for mysel
 - Reverted some awful code written for template matching that was "faster" but broke randomly because it rejected matches too aggressively.
 - Updated the MANT tier defaults because I was tired of updating the tiers and moving items around to make them sane.
 - Fixed some bugs with TS Climax races where it tried to go to race early, wouldn't use hammer cleats, and other weirdness.
+- Fixed a bug with megaphone turn tracking that was causing it to double decrement and messing up the turn logic.
 - Safety click checks have been added for Rest and Recreation. This was due to the old code using unsafe areas to click on.
 - You can now install the Python dependencies in `venv` and just run `start.bat` without polluting your core Python install.
 
@@ -28,7 +30,7 @@ This list does not include the changes from [waivegames-oss/umamusume-sweepy](ht
 
 ### A Umamusume bot that handles all aspects of gameplay including training, races, events, skill purchasing, and starting runs. 
 
-MANT is very far from being complete but it is functional and is probably better for parent farming compared to Aoharu.
+MANT support is a work in progress. It works but it's still mainly putting out S ranks. The bot is still just terrible at picking the proper trainings and I haven't demystified the meaning of stat limits or how to get it to properly pick the best trainings. I think it's overcomplicated and probably needs to be made simpler but I'm avoiding touching that for now.
 
 ![Uma Musume Auto Trainer](docs/main.png)
 
