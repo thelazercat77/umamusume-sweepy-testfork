@@ -13,7 +13,7 @@ Turn on auto-use items for MANT or the bot will break. You need to adjust the co
 
 ## Added Features / Changes from core Sweepy
 
-Here's what's changed so far that's worth noting, most of the new bot features have options to toggle them off (not yet added in the UI):
+Here's what's changed so far that's worth noting, most of the new bot features have options to toggle them off in the UI:
 
 - Bot will save two T2/T3 megaphones for summer training instead of wasting them on terrible training.
 - Bot buys the first T1/T2 megaphone on the first shop turn if available and uses it.

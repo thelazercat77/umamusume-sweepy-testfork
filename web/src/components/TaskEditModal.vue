@@ -24,7 +24,7 @@
                             <div class="form-group">
                 <label for="selectExecuteMode">Execution Mode</label>
                 <select v-model.number="selectedExecuteMode" class="form-control" id="selectExecuteMode">
-                  <option :value="1">Single Execution (Depricated)</option>
+                  <option :value="1">Single Execution</option>
                   <option :value="3">Loop until canceled</option>
                   <option :value="4">Team Trials</option>
                   <option :value="5">Full Auto (Career + Team Trials Loop)</option>
@@ -132,7 +132,7 @@
                             </div>
                             <div class="token-toggle ms-2" role="group">
                               <button type="button" class="token" :class="{ active: mantWhistleFocusSummer }" @click="mantWhistleFocusSummer = true">Focus Summer</button>
-                              <button type="button" class="token" :class="{ active: !mantWhistleFocusSummer }" @click="mantWhistleFocusSummer = false">Off</button>
+                              <button type="button" class="token" :class="{ active: !mantWhistleFocusSummer }" @click="mantWhistleFocusSummer = false">No Focus</button>
                             </div>
                             <div v-if="mantWhistleFocusSummer" class="d-flex align-items-center ms-2 gap-2">
                               <label class="mant-threshold-label mb-0">Classic +</label>
@@ -226,6 +226,56 @@
                               <div class="mant-threshold-slider-row">
                                 <input type="range" class="hint-slider" v-model.number="mantSkipRacePercentile" min="0" max="100" />
                                 <span class="mant-threshold-val">{{ mantSkipRacePercentile }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mant-thresholds mt-3">
+                        <label>Strategy</label>
+                        <div class="mant-threshold-group">
+                          <div class="mant-threshold-row">
+                            <div class="mant-threshold-controls">
+                              <span class="mant-threshold-label">Race Reward Estimate (shop coins)</span>
+                              <div class="mant-threshold-slider-row">
+                                <input type="range" class="hint-slider" v-model.number="mantRaceRewardEstimate" min="50" max="100" />
+                                <span class="mant-threshold-val">{{ mantRaceRewardEstimate }}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="mant-threshold-row">
+                            <div class="mant-threshold-controls">
+                              <span class="mant-threshold-label">Energy Recovery Training % Threshold (skips using items on training below this)</span>
+                              <div class="mant-threshold-slider-row">
+                                <input type="range" class="hint-slider" v-model.number="mantRecoveryPctThreshold" min="0" max="100" />
+                                <span class="mant-threshold-val">{{ mantRecoveryPctThreshold }}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="mant-threshold-row">
+                            <div class="mant-threshold-controls w-100">
+                              <div class="row m-0">
+                                <div class="col-4 px-1 d-flex align-items-center justify-content-center">
+                                  <label class="mb-0" style="font-size: 0.75em;padding-right:10px">Save 2 Megaphones for Summer?</label>
+                                  <div class="token-toggle d-inline-flex flex-shrink-0 ps-3" role="group">
+                                    <button type="button" class="token" :class="{ active: mantReserveMegaphonesForSummer }" @click="mantReserveMegaphonesForSummer = true">Yes</button>
+                                    <button type="button" class="token" :class="{ active: !mantReserveMegaphonesForSummer }" @click="mantReserveMegaphonesForSummer = false">No</button>
+                                  </div>
+                                </div>
+                                <div class="col-4 px-1 d-flex align-items-center justify-content-center">
+                                  <label class="mb-0" style="font-size: 0.75em;padding-right:10px">Buy First Megaphone in Shop?</label>
+                                  <div class="token-toggle d-inline-flex flex-shrink-0 ps-3" role="group">
+                                    <button type="button" class="token" :class="{ active: mantBuyFirstMegaphone }" @click="mantBuyFirstMegaphone = true">Yes</button>
+                                    <button type="button" class="token" :class="{ active: !mantBuyFirstMegaphone }" @click="mantBuyFirstMegaphone = false">No</button>
+                                  </div>
+                                </div>
+                                <div class="col-4 px-1 d-flex align-items-center justify-content-center">
+                                  <label class="mb-0" style="font-size: 0.75em;padding-right:10px">Buy Stat Items Early?</label>
+                                  <div class="token-toggle d-inline-flex flex-shrink-0 ps-3" role="group">
+                                    <button type="button" class="token" :class="{ active: mantBuyStatItemsEarly }" @click="mantBuyStatItemsEarly = true">Yes</button>
+                                    <button type="button" class="token" :class="{ active: !mantBuyStatItemsEarly }" @click="mantBuyStatItemsEarly = false">No</button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2171,6 +2221,11 @@ export default {
       mantCharmThreshold: 40,
       mantCharmFailureRate: 21,
       mantSkipRacePercentile: 0,
+      mantRaceRewardEstimate: 80,
+      mantReserveMegaphonesForSummer: true,
+      mantBuyFirstMegaphone: true,
+      mantRecoveryPctThreshold: 35,
+      mantBuyStatItemsEarly: true,
       mantTierThresholds: {"2":15,"3":40,"4":100,"5":9999},
       levelDataList: [],
       umamusumeTaskTypeList: [
@@ -3642,6 +3697,11 @@ export default {
             "charm_threshold": this.mantCharmThreshold,
             "charm_failure_rate": this.mantCharmFailureRate,
             "skip_race_percentile": this.mantSkipRacePercentile,
+            "race_reward_estimate": this.mantRaceRewardEstimate,
+            "reserve_megaphones_for_summer": this.mantReserveMegaphonesForSummer,
+            "buy_first_megaphone": this.mantBuyFirstMegaphone,
+            "recovery_pct_threshold": this.mantRecoveryPctThreshold,
+            "buy_stat_items_early": this.mantBuyStatItemsEarly,
             "tier_thresholds": { ...this.mantTierThresholds }
           } : null,
           "sp_burst_skill": this.spBurstEnabled ? this.spBurstSkillName : null,
@@ -4070,6 +4130,11 @@ export default {
         this.mantCharmThreshold = this.presetsUse.mant_config.charm_threshold ?? 40;
         this.mantCharmFailureRate = this.presetsUse.mant_config.charm_failure_rate ?? 21;
         this.mantSkipRacePercentile = this.presetsUse.mant_config.skip_race_percentile ?? 0;
+        this.mantRaceRewardEstimate = this.presetsUse.mant_config.race_reward_estimate ?? 80;
+        this.mantReserveMegaphonesForSummer = this.presetsUse.mant_config.reserve_megaphones_for_summer ?? true;
+        this.mantBuyFirstMegaphone = this.presetsUse.mant_config.buy_first_megaphone ?? true;
+        this.mantRecoveryPctThreshold = this.presetsUse.mant_config.recovery_pct_threshold ?? 35;
+        this.mantBuyStatItemsEarly = this.presetsUse.mant_config.buy_stat_items_early ?? true;
         this.mantTierThresholds = this.presetsUse.mant_config.tier_thresholds ?? {"2":15,"3":40,"4":100,"5":9999};
       } else {
         this.mantItemTiers = this.mantGetDefaultTiers();
@@ -4089,6 +4154,11 @@ export default {
         this.mantCharmThreshold = 40;
         this.mantCharmFailureRate = 21;
         this.mantSkipRacePercentile = 0;
+        this.mantRaceRewardEstimate = 80;
+        this.mantReserveMegaphonesForSummer = true;
+        this.mantBuyFirstMegaphone = true;
+        this.mantRecoveryPctThreshold = 35;
+        this.mantBuyStatItemsEarly = true;
       }
 
     },
@@ -4288,6 +4358,11 @@ export default {
         this.mantCharmThreshold = data.mant_config.charm_threshold ?? 40;
         this.mantCharmFailureRate = data.mant_config.charm_failure_rate ?? 21;
         this.mantSkipRacePercentile = data.mant_config.skip_race_percentile ?? 0;
+        this.mantRaceRewardEstimate = data.mant_config.race_reward_estimate ?? 80;
+        this.mantReserveMegaphonesForSummer = data.mant_config.reserve_megaphones_for_summer ?? true;
+        this.mantBuyFirstMegaphone = data.mant_config.buy_first_megaphone ?? true;
+        this.mantRecoveryPctThreshold = data.mant_config.recovery_pct_threshold ?? 35;
+        this.mantBuyStatItemsEarly = data.mant_config.buy_stat_items_early ?? true;
         this.mantTierThresholds = data.mant_config.tier_thresholds ?? {"2":15,"3":40,"4":100,"5":9999};
       } else {
         this.mantItemTiers = this.mantGetDefaultTiers();
@@ -4307,6 +4382,11 @@ export default {
         this.mantCharmThreshold = 40;
         this.mantCharmFailureRate = 21;
         this.mantSkipRacePercentile = 0;
+        this.mantRaceRewardEstimate = 80;
+        this.mantReserveMegaphonesForSummer = true;
+        this.mantBuyFirstMegaphone = true;
+        this.mantRecoveryPctThreshold = 35;
+        this.mantBuyStatItemsEarly = true;
       }
     },
     getPresets: function () {
@@ -4477,6 +4557,11 @@ export default {
           charm_threshold: this.mantCharmThreshold,
           charm_failure_rate: this.mantCharmFailureRate,
           skip_race_percentile: this.mantSkipRacePercentile,
+          race_reward_estimate: this.mantRaceRewardEstimate,
+          reserve_megaphones_for_summer: this.mantReserveMegaphonesForSummer,
+          buy_first_megaphone: this.mantBuyFirstMegaphone,
+          recovery_pct_threshold: this.mantRecoveryPctThreshold,
+          buy_stat_items_early: this.mantBuyStatItemsEarly,
           tier_thresholds: { ...this.mantTierThresholds }
         };
       }
@@ -4613,6 +4698,31 @@ export default {
       preset.resetSkillEventWeightList = this.resetSkillEventWeightList;
       if (this.selectedScenario === 2) {
         preset.auharuhai_config = { preliminaryRoundSelections: [...this.preliminaryRoundSelections], aoharuTeamNameSelection: this.aoharuTeamNameSelection };
+      } else if (this.selectedScenario === 3) {
+        preset.mant_config = {
+          item_tiers: { ...this.mantItemTiers },
+          tier_count: this.mantTierCount,
+          whistle_threshold: this.mantWhistleThreshold,
+          whistle_focus_summer: this.mantWhistleFocusSummer,
+          focus_summer_classic: this.mantFocusSummerClassic,
+          focus_summer_senior: this.mantFocusSummerSenior,
+          mega_small_threshold: this.mantMegaSmallThreshold,
+          mega_medium_threshold: this.mantMegaMediumThreshold,
+          mega_large_threshold: this.mantMegaLargeThreshold,
+          mega_race_penalty: this.mantMegaRacePenalty,
+          mega_summer_bonus: this.mantMegaSummerBonus,
+          training_weights_threshold: this.mantTrainingWeightsThreshold,
+          bbq_unmaxxed_cards: this.mantBbqUnmaxxedCards,
+          charm_threshold: this.mantCharmThreshold,
+          charm_failure_rate: this.mantCharmFailureRate,
+          skip_race_percentile: this.mantSkipRacePercentile,
+          race_reward_estimate: this.mantRaceRewardEstimate,
+          reserve_megaphones_for_summer: this.mantReserveMegaphonesForSummer,
+          buy_first_megaphone: this.mantBuyFirstMegaphone,
+          recovery_pct_threshold: this.mantRecoveryPctThreshold,
+          buy_stat_items_early: this.mantBuyStatItemsEarly,
+          tier_thresholds: { ...this.mantTierThresholds }
+        };
       }
       const encoded = encodePreset(preset);
       if (encoded) {
