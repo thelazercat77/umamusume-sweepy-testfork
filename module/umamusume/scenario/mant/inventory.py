@@ -1487,14 +1487,14 @@ def remaining_training_turns_real(ctx, date):
         extra_races = getattr(ctx.cultivate_detail, 'extra_race_list', [])
         if not extra_races:
             return (MANT_CLIMAX_START - date) + len(MANT_CLIMAX_TRAINING_TURNS)
-        
+
         from module.umamusume.asset.race_data import get_races_for_period
         races_in_window = 0
         for future_date in range(date, MANT_CLIMAX_START):
             available = get_races_for_period(future_date)
             if any(r in extra_races for r in available):
                 races_in_window += 1
-        
+
         total_turns = (MANT_CLIMAX_START - date) + len(MANT_CLIMAX_TRAINING_TURNS)
         return total_turns - races_in_window
 
