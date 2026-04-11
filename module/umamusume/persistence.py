@@ -3,6 +3,7 @@ import os
 import threading
 
 import bot.base.log as logger
+from config import CONFIG
 
 log = logger.get_logger(__name__)
 
@@ -104,6 +105,8 @@ def clear_career_data():
 
 
 def append_training_log(text):
+    if CONFIG.bot.log_training_analysis_data is False:
+        return
     try:
         with open(TRAINING_LOG_FILE, 'a', encoding='utf-8') as f:
             f.write(text + '\n')
