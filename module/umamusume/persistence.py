@@ -105,7 +105,7 @@ def clear_career_data():
 
 
 def append_training_log(text):
-    if CONFIG.bot.log_training_analysis_data is False:
+    if CONFIG.bot.log_training_data is False:
         return
     try:
         with open(TRAINING_LOG_FILE, 'a', encoding='utf-8') as f:
