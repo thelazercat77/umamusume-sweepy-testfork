@@ -8,4 +8,5 @@ bot:
     device_id: 0
     enabled: auto
     memory_fraction: 0.3
-version: 0.0.1
+  log_training_data: false
+version: 0.1.0
