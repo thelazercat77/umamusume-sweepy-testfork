@@ -98,6 +98,17 @@ def get_operation(ctx: UmamusumeContext) -> TurnOperation | None:
         if ctx.cultivate_detail.scenario.scenario_type() == ScenarioType.SCENARIO_TYPE_MANT:
             from module.umamusume.scenario.mant.inventory import should_skip_fast_path
             mant_skip_fast_path = should_skip_fast_path(ctx)
+            if not mant_skip_fast_path and mood_raw is not None and mood_val < mood_threshold:
+                date = ctx.cultivate_detail.turn_info.date
+                upcoming_races = []
+                for d in range(date, date + 3):
+                    available = get_races_for_period_cached(d)
+                    for r in ctx.cultivate_detail.extra_race_list:
+                        if r in available:
+                            upcoming_races.append(r)
+                if upcoming_races:
+                    log.info(f"Upcoming races in next 3 turns: {upcoming_races} - setting mant_skip_fast_path=True for mood")
+                    mant_skip_fast_path = True
     except Exception:
         pass
 
