@@ -878,7 +878,14 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                 ties = [i for i, v in enumerate(computed_scores) if abs(v - max_score) < eps]
                 chosen_idx = 4 if 4 in ties else (min(ties) if len(ties) > 0 else int(np.argmax(computed_scores)))
         local_training_type = TrainingType(chosen_idx + 1)
-        turn_log_lines.append(f"AI Best Training Pick: {names[chosen_idx]}")
+        energy_recovery_deferred = getattr(ctx.cultivate_detail.turn_info, 'energy_recovery_deferred', False)
+        charm_deferred = getattr(ctx.cultivate_detail.turn_info, 'charm_deferred', False)
+        chosen_til = ctx.cultivate_detail.turn_info.training_info_list[chosen_idx]
+        failure_rate = getattr(chosen_til, 'failure_rate', 0)
+        decision = f"AI Best Training Pick: {names[chosen_idx]} (Score: {max_score:.3f} | Failure Rate: {failure_rate}% | " \
+                   f"Energy Recovery Deferred: {energy_recovery_deferred} | Charm Deferred: {charm_deferred})"
+        turn_log_lines.append(decision)
+        log.info(decision)
         try:
             from module.umamusume.persistence import append_training_log
             append_training_log("\n".join(turn_log_lines) + "\n")
@@ -890,6 +897,7 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
             uma = ctx.cultivate_detail.turn_info.uma_attribute
             ctx.cultivate_detail.last_decision_stats = (uma.speed, uma.stamina, uma.power, uma.will, uma.intelligence)
         except Exception:
+            log.warn("Failed to set last_decision_stats.")
             pass
  
 
@@ -901,6 +909,7 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
     from module.umamusume.script.cultivate_task.ai import get_operation
     op_ai = get_operation(ctx)
     if op_ai is None:
+        log.info("No AI decision reached, defaulting to Speed training.")
         op = TurnOperation()
         op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_TRAINING
         if local_training_type is None:
@@ -910,9 +919,11 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
         new_is_race = False
     else:
         if op_ai.turn_operation_type == TurnOperationType.TURN_OPERATION_TYPE_RACE and getattr(op_ai, 'race_id', 0) == 0:
+            log.info("Overriding race selection to training.")
             op = TurnOperation()
             op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_TRAINING
             if local_training_type is None:
+                log.info("No training type selected, defaulting to Speed.")
                 local_training_type = TrainingType.TRAINING_TYPE_SPEED
             op.training_type = local_training_type
             ctx.cultivate_detail.turn_info.turn_operation = op
@@ -920,6 +931,7 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
         else:
             if op_ai.turn_operation_type == TurnOperationType.TURN_OPERATION_TYPE_TRAINING and (op_ai.training_type == TrainingType.TRAINING_TYPE_UNKNOWN):
                 if local_training_type is None:
+                    log.info("No training type selected, defaulting to Speed.")
                     local_training_type = TrainingType.TRAINING_TYPE_SPEED
                 op_ai.training_type = local_training_type
             ctx.cultivate_detail.turn_info.turn_operation = op_ai
@@ -1089,7 +1101,8 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                     megaphone_reevaluate(ctx, op)
                 except Exception:
                     pass
-        except Exception:
+        except Exception as e:
+            log.error("Error in MANT item usage logic: " + str(e))
             pass
 
         if op.training_type == TrainingType.TRAINING_TYPE_UNKNOWN:
@@ -1100,6 +1113,10 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
         ctx.ctrl.click_by_point(TRAINING_POINT_LIST[op.training_type.value - 1])
         time.sleep(0.5)
         return
+    elif op is not None:
+        log.info("AI selected training: " + str(op.training_type) + ", returning to main menu.")
+    else:
+        log.info("No turn operation was reached, returning to main menu.")
     
     ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
     return

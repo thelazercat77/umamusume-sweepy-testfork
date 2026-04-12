@@ -143,6 +143,8 @@ def handle_mant_shop_scan(ctx, current_date):
 
     bought = False
     mant_cfg = getattr(ctx.task.detail.scenario_config, 'mant_config', None)
+    buy_stat_early = getattr(mant_cfg, 'buy_stat_items_early', True)
+    stat_kw = ("Notepad", "Manual", "Scroll")
     if mant_cfg and mant_cfg.item_tiers:
         budget = ctx.cultivate_detail.mant_coins
         shop_available = {name for name, _, _, _, buyable in items_list if buyable}
@@ -349,7 +351,9 @@ def handle_mant_shop_scan(ctx, current_date):
                     continue
                 if skip_cupcakes and display in cupcake_names:
                     continue
-                tier_candidates.append((min_turns_for_item.get(display, 99), display))
+                actual_turns = min_turns_for_item.get(display, 99)
+                effective_turns = 0 if (buy_stat_early and any(kw in display for kw in stat_kw)) else actual_turns
+                tier_candidates.append((effective_turns, display))
 
             # Sooner-expiring items first; ties broken alphabetically for determinism
             tier_candidates.sort()
@@ -497,11 +501,7 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
 
     mant_cfg = getattr(ctx.task.detail.scenario_config, 'mant_config', None)
     if mant_cfg and mant_cfg.item_tiers:
-        buy_stat_early = getattr(mant_cfg, 'buy_stat_items_early', True)
-        stat_kw = ("Notepad", "Manual", "Scroll")
-        
-        items = {name for name, _, _, turns, buyable in shop_items
-                 if buyable and (turns == 1 or (buy_stat_early and any(kw in name for kw in stat_kw)))}
+        items = {name for name, _, _, turns, buyable in shop_items if buyable and turns == 1}
         if items:
             shop_slugs = {display_to_slug(n) for n, _, _, _, buyable in shop_items
                           if buyable}
