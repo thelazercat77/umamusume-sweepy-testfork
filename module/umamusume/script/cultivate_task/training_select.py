@@ -72,11 +72,16 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
     if turn_op is not None:
         try:
             cached_stats = getattr(ctx.cultivate_detail, 'last_decision_stats', None)
+            force_invalidate = getattr(ctx.cultivate_detail, 'force_invalidate_cache', False)
             if cached_stats is not None:
                 uma = ctx.cultivate_detail.turn_info.uma_attribute
                 current_stats = (uma.speed, uma.stamina, uma.power, uma.will, uma.intelligence)
-                if current_stats != cached_stats:
-                    log.info(f"[training_select] Cache invalid: was {cached_stats}, now {current_stats}")
+                if current_stats != cached_stats or force_invalidate:
+                    if force_invalidate:
+                      log.info(f"[training_select] Forcing cache invalidation as requested.")
+                      ctx.cultivate_detail.force_invalidate_cache = False
+                    else:
+                      log.info(f"[training_select] Cache invalid: was {cached_stats}, now {current_stats}")
                     ctx.cultivate_detail.turn_info.turn_operation = None
                     ctx.cultivate_detail.turn_info.parse_train_info_finish = False
                     ctx.cultivate_detail.mant_cleat_used = False
@@ -137,14 +142,6 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
     ctx.cultivate_detail.turn_info.cached_energy = energy
 
     if energy <= limit and not mant_skip:
-        op = TurnOperation()
-        if should_use_pal_outing_simple(ctx):
-            op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_TRIP
-            ctx.cultivate_detail.turn_info.turn_operation = op
-            ctx.cultivate_detail.last_decision_stats = None
-            ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
-            return
-
         turn_info = ctx.cultivate_detail.turn_info
         date = turn_info.date
         from module.umamusume.asset.race_data import get_races_for_period
@@ -1000,13 +997,10 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                     energy_below = current_energy <= energy_threshold
                     score_below = current_score <= score_threshold
                     
-                    log.info(f"PAL outing - Stage {stage}:")
-                    log.info(f"Mood: {current_mood} vs {mood_threshold} - {'<' if mood_below else '>'}")
-                    log.info(f"Energy: {current_energy} vs {energy_threshold} - {'<' if energy_below else '>'}")
-                    log.info(f"Score: {current_score:.3f} vs {score_threshold} - {'<' if score_below else '>'}")
+                    conditions_met = sum([mood_below, energy_below, score_below])
                     
-                    if mood_below and energy_below and score_below:
-                        log.info("All 3 conditions < thresholds - overriding to pal outing")
+                    if conditions_met >= 2:
+                        log.info("2/3 conditions met - overriding to pal outing")
                         if op_from_ai.turn_operation_type == TurnOperationType.TURN_OPERATION_TYPE_RACE:
                             ctx.cultivate_detail.mant_cleat_used = False
                         op_from_ai.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_TRIP
@@ -1051,18 +1045,20 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                     log.info(f"Selected {training_name} training has 0% failure rate - skipping energy items and charm checks")
                     ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
                     ctx.cultivate_detail.turn_info.charm_deferred = False
-                charm_used = False
                 # Use charms before relying on energy items
                 if getattr(ctx.cultivate_detail.turn_info, 'charm_deferred', False):
                     from module.umamusume.scenario.mant.inventory import handle_charm_simplified
                     if handle_charm_simplified(ctx):
                         log.info("Used a Good-luck Charm for training.")
+                        # force cache invalidation to rescan training and calculate new percentiles
+                        ctx.cultivate_detail.force_invalidate_cache = True
                         ctx.cultivate_detail.turn_info.charm_deferred = False
-                        charm_used = True
+                        ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
+                        return
                     else:
                         handle_decision(ctx)
                         return
-                if getattr(ctx.cultivate_detail.turn_info, 'energy_recovery_deferred', False) and not charm_used:
+                if getattr(ctx.cultivate_detail.turn_info, 'energy_recovery_deferred', False):
                     from module.umamusume.scenario.mant.inventory import get_best_percentile, handle_energy_recovery
                     from module.umamusume.constants.game_constants import is_summer_camp_period as _is_summer
 
@@ -1085,7 +1081,11 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                     
                     if use_items:
                         handle_energy_recovery(ctx)
+                        # force cache invalidation to rescan training and calculate new percentiles
+                        ctx.cultivate_detail.force_invalidate_cache = True
+                        ctx.cultivate_detail.turn_info.charm_deferred = False
                         ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
+                        return
                     else:
                         handle_decision(ctx)
                         return

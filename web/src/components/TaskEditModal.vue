@@ -37,7 +37,7 @@
                     <select v-model.number="selectedScenario" class="form-control" id="selectScenario">
                       <option :value="1">URA</option>
                       <option :value="2">Aoharu Cup</option>
-<option :value="3">MANT (Not finished but functional)</option>
+                      <option :value="3">MANT</option>
                     </select>
                   </div>
                 </div>
@@ -234,15 +234,6 @@
                       <div class="mant-thresholds mt-3">
                         <label>Strategy</label>
                         <div class="mant-threshold-group">
-                          <div class="mant-threshold-row">
-                            <div class="mant-threshold-controls">
-                              <span class="mant-threshold-label">Race Reward Estimate (shop coins)</span>
-                              <div class="mant-threshold-slider-row">
-                                <input type="range" class="hint-slider" v-model.number="mantRaceRewardEstimate" min="50" max="100" />
-                                <span class="mant-threshold-val">{{ mantRaceRewardEstimate }}</span>
-                              </div>
-                            </div>
-                          </div>
                           <div class="mant-threshold-row">
                             <div class="mant-threshold-controls">
                               <span class="mant-threshold-label">Energy Recovery Training % Threshold (skips using items on training below this)</span>
@@ -2221,7 +2212,6 @@ export default {
       mantCharmThreshold: 40,
       mantCharmFailureRate: 21,
       mantSkipRacePercentile: 0,
-      mantRaceRewardEstimate: 80,
       mantReserveMegaphonesForSummer: true,
       mantBuyFirstMegaphone: true,
       mantRecoveryPctThreshold: 35,
@@ -3697,7 +3687,6 @@ export default {
             "charm_threshold": this.mantCharmThreshold,
             "charm_failure_rate": this.mantCharmFailureRate,
             "skip_race_percentile": this.mantSkipRacePercentile,
-            "race_reward_estimate": this.mantRaceRewardEstimate,
             "reserve_megaphones_for_summer": this.mantReserveMegaphonesForSummer,
             "buy_first_megaphone": this.mantBuyFirstMegaphone,
             "recovery_pct_threshold": this.mantRecoveryPctThreshold,
@@ -4130,7 +4119,6 @@ export default {
         this.mantCharmThreshold = this.presetsUse.mant_config.charm_threshold ?? 40;
         this.mantCharmFailureRate = this.presetsUse.mant_config.charm_failure_rate ?? 21;
         this.mantSkipRacePercentile = this.presetsUse.mant_config.skip_race_percentile ?? 0;
-        this.mantRaceRewardEstimate = this.presetsUse.mant_config.race_reward_estimate ?? 80;
         this.mantReserveMegaphonesForSummer = this.presetsUse.mant_config.reserve_megaphones_for_summer ?? true;
         this.mantBuyFirstMegaphone = this.presetsUse.mant_config.buy_first_megaphone ?? true;
         this.mantRecoveryPctThreshold = this.presetsUse.mant_config.recovery_pct_threshold ?? 35;
@@ -4154,7 +4142,6 @@ export default {
         this.mantCharmThreshold = 40;
         this.mantCharmFailureRate = 21;
         this.mantSkipRacePercentile = 0;
-        this.mantRaceRewardEstimate = 80;
         this.mantReserveMegaphonesForSummer = true;
         this.mantBuyFirstMegaphone = true;
         this.mantRecoveryPctThreshold = 35;
@@ -4358,7 +4345,6 @@ export default {
         this.mantCharmThreshold = data.mant_config.charm_threshold ?? 40;
         this.mantCharmFailureRate = data.mant_config.charm_failure_rate ?? 21;
         this.mantSkipRacePercentile = data.mant_config.skip_race_percentile ?? 0;
-        this.mantRaceRewardEstimate = data.mant_config.race_reward_estimate ?? 80;
         this.mantReserveMegaphonesForSummer = data.mant_config.reserve_megaphones_for_summer ?? true;
         this.mantBuyFirstMegaphone = data.mant_config.buy_first_megaphone ?? true;
         this.mantRecoveryPctThreshold = data.mant_config.recovery_pct_threshold ?? 35;
@@ -4382,7 +4368,6 @@ export default {
         this.mantCharmThreshold = 40;
         this.mantCharmFailureRate = 21;
         this.mantSkipRacePercentile = 0;
-        this.mantRaceRewardEstimate = 80;
         this.mantReserveMegaphonesForSummer = true;
         this.mantBuyFirstMegaphone = true;
         this.mantRecoveryPctThreshold = 35;
@@ -4557,7 +4542,6 @@ export default {
           charm_threshold: this.mantCharmThreshold,
           charm_failure_rate: this.mantCharmFailureRate,
           skip_race_percentile: this.mantSkipRacePercentile,
-          race_reward_estimate: this.mantRaceRewardEstimate,
           reserve_megaphones_for_summer: this.mantReserveMegaphonesForSummer,
           buy_first_megaphone: this.mantBuyFirstMegaphone,
           recovery_pct_threshold: this.mantRecoveryPctThreshold,
@@ -4716,7 +4700,6 @@ export default {
           charm_threshold: this.mantCharmThreshold,
           charm_failure_rate: this.mantCharmFailureRate,
           skip_race_percentile: this.mantSkipRacePercentile,
-          race_reward_estimate: this.mantRaceRewardEstimate,
           reserve_megaphones_for_summer: this.mantReserveMegaphonesForSummer,
           buy_first_megaphone: this.mantBuyFirstMegaphone,
           recovery_pct_threshold: this.mantRecoveryPctThreshold,

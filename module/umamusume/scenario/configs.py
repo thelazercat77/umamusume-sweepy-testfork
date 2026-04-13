@@ -35,7 +35,6 @@ class MantConfig:
     skip_race_percentile: int
     mega_race_penalty: int
     mega_summer_bonus: int
-    race_reward_estimate: int
     reserve_megaphones_for_summer: bool
     buy_first_megaphone: bool
     recovery_pct_threshold: int
@@ -60,7 +59,6 @@ class MantConfig:
         raw_thresholds = config.get("tier_thresholds", {})
         self.tier_thresholds = {int(k): v for k, v in raw_thresholds.items()}
         self.skip_race_percentile = config.get("skip_race_percentile", 0)
-        self.race_reward_estimate = config.get("race_reward_estimate", 80)
         self.reserve_megaphones_for_summer = config.get("reserve_megaphones_for_summer", True)
         self.buy_first_megaphone = config.get("buy_first_megaphone", True)
         self.recovery_pct_threshold = config.get("recovery_pct_threshold", 35)
