@@ -326,7 +326,6 @@ def handle_mant_shop_scan(ctx, current_date):
             _turn_op is not None and
             getattr(_turn_op, 'turn_operation_type', None) == TurnOperationType.TURN_OPERATION_TYPE_RACE
         )
-        race_reward_estimate = getattr(mant_cfg, 'race_reward_estimate', 80)
 
         if bbq_effective_tier is not None and bbq_effective_tier <= 0:
             bbq_display = "Grilled Carrots"
@@ -364,8 +363,10 @@ def handle_mant_shop_scan(ctx, current_date):
                 if skip_cupcakes and display in cupcake_names:
                     continue
                 actual_turns = min_turns_for_item.get(display, 99)
-                effective_turns = 0 if (buy_stat_early and any(kw in display for kw in stat_kw)) else actual_turns
-                tier_candidates.append((effective_turns, display))
+                if (buy_stat_early and any(kw in display for kw in stat_kw)):
+                    priority_targets.append(display)
+                else:
+                    tier_candidates.append((actual_turns, display))
 
             # Sooner-expiring items first; ties broken alphabetically for determinism
             tier_candidates.sort()
@@ -380,17 +381,6 @@ def handle_mant_shop_scan(ctx, current_date):
                 for i in range(actual_copies):
                     remaining_after = budget - cost
                     if remaining_after < 0:
-                        # Can't afford now — check race-coin lookahead before giving up
-                        item_turns = min_turns_for_item.get(display, 99)
-                        if (is_race_turn
-                                and item_turns > 1
-                                and (budget + race_reward_estimate - cost) >= 0):
-                            log.info(
-                                f"Race-coin lookahead: deferring {display} "
-                                f"(turns={item_turns}, cost={cost}, "
-                                f"budget={budget}, est_reward={race_reward_estimate}) "
-                                f"— emergency shop will retry post-race"
-                            )
                         break
                     threshold = 0
                     # Avoid buying terrible items in post senior summer
