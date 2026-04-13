@@ -18,6 +18,18 @@ RIVAL_COLOR_1 = (0x4E, 0xFF, 0xFF)
 RIVAL_COLOR_2 = (0x30, 0xAD, 0xEB)
 RIVAL_TOLERANCE = 5
 
+LATE_GAME_ITEM_BLACKLIST = [
+    "Yummy Cat Food",
+    "Pretty Mirror",
+    "Reporter's Binoculars",
+    "Master Practice Guide",
+    "Grilled Carrots",
+    "Speed Training Application",
+    "Stamina Training Application",
+    "Power Training Application",
+    "Guts Training Application",
+    "Wit Training Application",
+]
 
 def read_shop_coins(img, is_summer, is_climax):
     if is_climax:
@@ -381,6 +393,9 @@ def handle_mant_shop_scan(ctx, current_date):
                             )
                         break
                     threshold = 0
+                    # Avoid buying terrible items in post senior summer
+                    if post_senior_summer and display in LATE_GAME_ITEM_BLACKLIST:
+                        break
                     if tier > 1 and not post_senior_summer:
                         raw_threshold = mant_cfg.tier_thresholds.get(tier, (tier - 1) * 50)
                         threshold = raw_threshold * sale_modifier
