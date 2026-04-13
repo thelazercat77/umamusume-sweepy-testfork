@@ -282,6 +282,7 @@ def handle_mant_shop_scan(ctx, current_date):
         cupcake_names = {'Plain Cupcake', 'Berry Sweet Cupcake'}
         skip_cupcakes = False
         total_cupcakes = sum(owned_map.get(n, 0) for n in cupcake_names)
+        total_kale_juices = owned_map.get("Royal Kale Juice", 0)
         is_senior_or_later = current_date > CLASSIC_YEAR_END
 
         from module.umamusume.scenario.mant.constants import get_incoming_mood
@@ -294,6 +295,8 @@ def handle_mant_shop_scan(ctx, current_date):
 
         if total_cupcakes >= 2:
             skip_cupcakes = True
+        elif total_cupcakes - total_kale_juices <= 0:
+            skip_cupcakes = False
         elif is_senior_or_later and (total_cupcakes >= 1 or current_mood is None or current_mood >= 5):
             skip_cupcakes = True
         elif current_mood is None or current_mood >= 5:

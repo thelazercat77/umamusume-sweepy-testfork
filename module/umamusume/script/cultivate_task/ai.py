@@ -423,8 +423,8 @@ def get_operation(ctx: UmamusumeContext) -> TurnOperation | None:
                     trip = False
             else:
                 from module.umamusume.scenario.mant.inventory import has_cupcake
-                if is_mant and (has_cupcake(ctx) or upcoming_races):
-                    log.info("Recreation conditions met but we have cupcakes/upcoming races, skipping.")
+                if is_mant and (has_cupcake(ctx) or upcoming_races) and mood_val >= 3:
+                    log.info("Recreation conditions met but we have cupcakes/upcoming races with Normal/Good mood, skipping.")
                     trip = False
                 else:
                     log.info("Recreation conditions met - regular trip (PAL not configured)")

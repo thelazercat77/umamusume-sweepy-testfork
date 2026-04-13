@@ -300,7 +300,12 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
                 log.info(f"Energy at {round(energy, 2)} (below limit of {limit}), decision made to use pal card recreation.")
                 ctx.ctrl.click_by_point(get_trip(ctx))
                 return
-            # TODO: add check for final turn to skip resting on it and instead at least check training
+            if is_mant and ctx.cultivate_detail.turn_info.date == 77 and energy >= 20:
+                log.info("Final turn of MANT but we have some energy, checking training.")
+                base_energy, _, _ = scan_energy(ctx.ctrl)
+                ctx.cultivate_detail.turn_info.base_energy = base_energy
+                ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
+                return
             log.info(f"Energy at {round(energy, 2)} (below limit of {limit}), decision made to rest.")
             ctx.ctrl.click_by_point(CULTIVATE_REST)
             return

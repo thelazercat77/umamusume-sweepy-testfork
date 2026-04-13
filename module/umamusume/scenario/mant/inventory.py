@@ -1053,13 +1053,20 @@ def handle_energy_recovery(ctx):
     )
 
     available = []
+    have_royal_kale_juice = owned_map.get('Royal Kale Juice', 0) > 0
+    cached_mood = getattr(ctx.cultivate_detail.turn_info, 'cached_mood', None)
     for item_name, raw_energy in sorted(ENERGY_ITEMS.items(), key=lambda x: x[1], reverse=True):
         qty = owned_map.get(item_name, 0)
         if qty > 0:
             if item_name == 'Royal Kale Juice' and not cupcake_available:
-                log.info("Skipping Royal Kale Juice in energy recovery - no cupcake available to compensate mood penalty")
+                log.info("Skipping Royal Kale Juice in energy recovery - no cupcake available to compensate mood penalty.")
                 continue
             available.append((item_name, raw_energy, qty))
+
+    # If there's no other energy items and our mood is Great, use the Royal Kale Juice
+    if not available and have_royal_kale_juice and cached_mood is not None and cached_mood == 5:
+        log.info("No other energy items available and mood is Great, using Royal Kale Juice.")
+        available.append(('Royal Kale Juice', 100, 1))
 
     if not available:
         return False
@@ -1079,7 +1086,6 @@ def handle_energy_recovery(ctx):
             ctx.cultivate_detail.turn_info.cached_energy = energy
             # Update cached mood if we use Royal Kale Juice so cupcakes are used later
             if item_name == "Royal Kale Juice":
-                cached_mood = getattr(ctx.cultivate_detail.turn_info, 'cached_mood', None)
                 if cached_mood is not None:
                     ctx.cultivate_detail.turn_info.cached_mood = cached_mood - 1
                 else:
