@@ -1592,6 +1592,11 @@ def handle_megaphone(ctx):
 
     best_mega = None
     best_tier = 0
+    best_available_threshold = None
+    
+    if hasattr(ctx.cultivate_detail, 'turn_info') and ctx.cultivate_detail.turn_info is not None:
+        ctx.cultivate_detail.turn_info.megaphone_percentile = percentile
+
     for name, (tier, duration) in sorted(MEGAPHONE_TIERS.items(), key=lambda x: -x[1][0]):
         if owned_map.get(name, 0) <= 0:
             continue
@@ -1636,10 +1641,18 @@ def handle_megaphone(ctx):
         if is_summer:
             threshold -= summer_bonus
 
+        # Store the first (best tier) megaphone's threshold we consider
+        if best_available_threshold is None:
+            best_available_threshold = threshold
+
         if percentile >= threshold:
             best_mega = name
             best_tier = tier
+            best_available_threshold = threshold
             break
+
+    if hasattr(ctx.cultivate_detail, 'turn_info') and ctx.cultivate_detail.turn_info is not None:
+        ctx.cultivate_detail.turn_info.megaphone_threshold = best_available_threshold
 
     if best_mega is None:
         return False
@@ -1667,6 +1680,11 @@ def handle_anklet(ctx):
         return False
 
     threshold = getattr(mant_cfg, 'training_weights_threshold', 40)
+    
+    if hasattr(ctx.cultivate_detail, 'turn_info') and ctx.cultivate_detail.turn_info is not None:
+        ctx.cultivate_detail.turn_info.anklet_percentile = percentile
+        ctx.cultivate_detail.turn_info.anklet_threshold = threshold
+
     if percentile < threshold:
         return False
 
