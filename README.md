@@ -8,10 +8,9 @@ Turn on auto-use items for MANT or the bot will break. You need to adjust the co
 - Clock usage in MANT is not available. I'm thinking of allowing per race configuration from the UI if it's doable.
 - Option to skip training isn't configurable by G1/G2/G3 so I want to add that so you can avoid skipping G1s but consider it for G2/G3s.
 
-
 ## Known Bugs
 
-- Losing your debut race means the run is cooked, the bot doesn't know how to recover from this until we implement retries.
+- Debut race loss logic was broken, but this should be fixed now. If you lose the debut race, it will try to race on the next turn.
 - Bot can sometimes lose track of where it is, but it usually recovers. I'm fixing these bugs as I see them pop up.
 - URA/Unity are not tested and may not work. This only works for MANT.
 
