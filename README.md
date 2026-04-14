@@ -4,11 +4,15 @@ This is a fork for Sweepy with a rewrite taken from [waivegames-oss/umamusume-sw
 
 Turn on auto-use items for MANT or the bot will break. You need to adjust the configurations as well but I don't have any good recommendations yet.
 
+## Features Not Implemented Yet
+- Clock usage in MANT is not available. I'm thinking of allowing per race configuration from the UI if it's doable.
+- Option to skip training isn't configurable by G1/G2/G3 so I want to add that so you can avoid skipping G1s but consider it for G2/G3s.
+
+
 ## Known Bugs
 
-- Skills are sometimes not being bought at the end of the run; this happens very rarely. Still verifying if this is fixed.
-- Bot is still getting stuck on some screens, fallback should get it unstuck. I'm fixing these as I see them.
-- Clock usage is not implemented in MANT yet. I wouldn't trust my clocks to it, so it's not a high priority.
+- Losing your debut race means the run is cooked, the bot doesn't know how to recover from this until we implement retries.
+- Bot can sometimes lose track of where it is, but it usually recovers. I'm fixing these bugs as I see them pop up.
 - URA/Unity are not tested and may not work. This only works for MANT.
 
 ## Added Features / Changes from core Sweepy
@@ -19,9 +23,10 @@ Here's what's changed so far that's worth noting, most of the new bot features h
 - Bot buys the first T1/T2 megaphone on the first shop turn if available and uses it.
 - Bot now checks training **before** using energy items, so it won't waste energy items on bad training (skips training in the bottom 35th percentile).
 - Bot now properly goes to race even if there's no energy items in MANT (this was a bug they wouldn't fix).
-- Bot buys stat items early if there's available budget and will prioritize buying items that expire earlier if it's racing.
+- Bot now prioritizes buying scrolls/manuals in the shop instead of waiting until the last minute. Notepads are not included in this.
 - Bot no longer uses cupcakes to raise mood if it's not going to train and relies on racing first to raise mood (unless it's too low).
-- Bot now only uses Royal Kale Juice if it has a cupcake available to use afterwards.
+- Bot now only uses Royal Kale Juice if it has a cupcake available to use afterwards or if mood is already Great without any other energy items.
+- Bot will now buy cupcakes to match the number of Royal Kale Juices it has, up to a maximum of 2.
 - Reverted some awful code written for template matching that was "faster" but broke randomly because it rejected matches too aggressively.
 - Updated the MANT tier defaults because I was tired of updating the tiers and moving items around to make them sane.
 - Fixed some bugs with TS Climax races where it tried to go to race early, wouldn't use hammer cleats, and other weirdness.

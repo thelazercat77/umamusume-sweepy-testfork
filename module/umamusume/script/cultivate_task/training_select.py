@@ -1080,12 +1080,16 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                         log.info(f"Training quality poor (pct={percentile:.0f}% < {recovery_pct_threshold}%) - skipping energy items")
                     
                     if use_items:
-                        handle_energy_recovery(ctx)
-                        # force cache invalidation to rescan training and calculate new percentiles
-                        ctx.cultivate_detail.force_invalidate_cache = True
-                        ctx.cultivate_detail.turn_info.charm_deferred = False
-                        ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
-                        return
+                        if handle_energy_recovery(ctx):
+                            # force cache invalidation to rescan training and calculate new percentiles
+                            ctx.cultivate_detail.force_invalidate_cache = True
+                            ctx.cultivate_detail.turn_info.charm_deferred = False
+                            ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
+                            return
+                        else:
+                            log.info("No energy items to use - deferring to handle_decision logic")
+                            handle_decision(ctx)
+                            return
                     else:
                         handle_decision(ctx)
                         return
