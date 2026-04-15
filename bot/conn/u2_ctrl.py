@@ -334,7 +334,7 @@ class U2AndroidController(AndroidController):
             return True
 
         # Block unexpected Recreation clicks - this area becomes the infirmary in summer so we have to handle it too...
-        allowed_keywords = ("recreation", "outing", "medic")
+        allowed_keywords = ("recreation", "outing", "medic", "try again", "alarm")
         if not any(k in name_lower for k in allowed_keywords) and 245 <= x <= 310 and 1100 <= y <= 1135:
             log.info(f"Blocked unexpected Recreation click for {name} at {x}, {y}")
             return True

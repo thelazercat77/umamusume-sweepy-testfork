@@ -620,17 +620,14 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                 score *= pal_mult
             
             fail_mult = 1.0
+
+            # Failure rate is no longer applied here.
+            # Scores are computed without failure-rate compensation.
             try:
-                energy_item_used = getattr(ctx.cultivate_detail.turn_info, 'energy_item_used', False)
-                if getattr(ctx.cultivate_detail, 'compensate_failure', True):
-                    fr_val = int(getattr(til, 'failure_rate', -1))
-                    if fr_val >= 0:
-                        fail_mult = max(0.0, 1.0 - (float(fr_val) / 50.0))
-                        if not energy_item_used:
-                            score *= fail_mult
+                fr_val = int(getattr(til, 'failure_rate', -1))
             except Exception:
-                pass
-            pre_fail_score = score / fail_mult if fail_mult > 0 and fail_mult != 1.0 and not getattr(ctx.cultivate_detail.turn_info, 'energy_item_used', False) else score
+                fr_val = -1
+            pre_fail_score = score
 
             energy_mult = 1.0
             if idx == 4 and current_energy is not None:
@@ -979,6 +976,73 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                     else:
                         log.info("At least one condition failed - continuing with training")
     
+    def has_good_luck_charm_available(ctx):
+        try:
+            owned_map = {n: q for n, q in getattr(ctx.cultivate_detail, 'mant_owned_items', [])}
+            return owned_map.get("Good-Luck Charm", 0) > 0
+        except Exception:
+            return False
+
+
+    def can_reach_energy_threshold_with_items(ctx, target_energy=45):
+        try:
+            current_energy = int(getattr(ctx.cultivate_detail.turn_info, 'cached_energy', 0))
+        except Exception:
+            current_energy = 0
+
+        if current_energy >= target_energy:
+            return True
+
+        try:
+            owned_map = {n: q for n, q in getattr(ctx.cultivate_detail, 'mant_owned_items', [])}
+        except Exception:
+            return False
+
+        projected_energy = current_energy
+
+        restore_values = [
+            ("Royal Kale Juice", 100),
+            ("Vita 65", 65),
+            ("Vita 40", 40),
+            ("Vita 20", 20),
+            ("Energy Drink MAX", 5),
+        ]
+
+        for item_name, restore_amount in restore_values:
+            qty = int(owned_map.get(item_name, 0))
+            if qty > 0:
+                projected_energy += qty * restore_amount
+                if projected_energy >= target_energy:
+                    return True
+
+        return False
+
+
+    def fallback_from_bad_training(ctx, op):
+        available_races = getattr(ctx.cultivate_detail.turn_info, 'cached_available_races', [])
+        extra_race_this_turn = [rid for rid in ctx.cultivate_detail.extra_race_list if rid in available_races]
+
+        if extra_race_this_turn:
+            log.info(f"Skipping bad high-failure training - racing instead (race {extra_race_this_turn[0]})")
+            op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_RACE
+            op.race_id = extra_race_this_turn[0]
+            ctx.cultivate_detail.turn_info.turn_operation = op
+            ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
+            return True
+
+        if should_use_pal_outing_simple(ctx):
+            log.info("Skipping bad high-failure training - using pal outing instead")
+            op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_TRIP
+            ctx.cultivate_detail.turn_info.turn_operation = op
+            ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
+            return True
+
+        log.info("Skipping bad high-failure training - resting instead")
+        op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_REST
+        ctx.cultivate_detail.turn_info.turn_operation = op
+        ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
+        return True
+    
     op = ctx.cultivate_detail.turn_info.turn_operation
     if op is not None and op.turn_operation_type == TurnOperationType.TURN_OPERATION_TYPE_TRAINING:
         try:
@@ -986,60 +1050,68 @@ def script_cultivate_training_select(ctx: UmamusumeContext):
                 selected_idx = op.training_type.value - 1
                 selected_til = ctx.cultivate_detail.turn_info.training_info_list[selected_idx]
                 selected_fr = int(getattr(selected_til, 'failure_rate', -1))
+
+                training_name = TRAINING_NAMES[selected_idx] if 0 <= selected_idx < len(TRAINING_NAMES) else f"idx={selected_idx}"
+
+                mant_cfg = getattr(ctx.task.detail.scenario_config, 'mant_config', None)
+                selected_failure_limit = getattr(mant_cfg, 'selected_failure_limit', 8) if mant_cfg else 8
+
                 if selected_fr == 0:
-                    training_name = TRAINING_NAMES[selected_idx] if 0 <= selected_idx < len(TRAINING_NAMES) else f"idx={selected_idx}"
-                    log.info(f"Selected {training_name} training has 0% failure rate - skipping energy items checks")
+                    log.info(f"Selected {training_name} training has 0% failure rate - skipping deferred item checks")
                     ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
 
-                if getattr(ctx.cultivate_detail.turn_info, 'energy_recovery_deferred', False):
-                    from module.umamusume.scenario.mant.inventory import get_best_percentile, handle_energy_recovery
-                    from module.umamusume.constants.game_constants import is_summer_camp_period as _is_summer
+                elif selected_fr > selected_failure_limit:
+                    log.info(
+                        f"Selected {training_name} training has high failure rate "
+                        f"({selected_fr}% > {selected_failure_limit}%)"
+                    )
 
-                    _date = getattr(ctx.cultivate_detail.turn_info, 'date', 0)
-                    percentile = get_best_percentile(ctx)
-                    mant_cfg = getattr(ctx.task.detail.scenario_config, 'mant_config', None)
-                    recovery_pct_threshold = getattr(mant_cfg, 'recovery_pct_threshold', 35) if mant_cfg else 35
+                    used_any = False
 
-                    use_items = False
-                    if _is_summer(_date):
-                        log.info("Summer camp period - always using energy items")
-                        use_items = True
-                    elif percentile is not None and percentile >= recovery_pct_threshold:
-                        log.info(f"Training quality good (pct={percentile:.0f}% >= {recovery_pct_threshold}%) - using energy items")
-                        use_items = True
-                    elif percentile is None:
-                        log.info("Not enough data for percentile - skipping energy items")
-                    else:
-                        log.info(f"Training quality poor (pct={percentile:.0f}% < {recovery_pct_threshold}%) - skipping energy items")
+                    # 1) Try Good-Luck Charm first if failure rate is above 40 and charm is actually owned
+                    if selected_fr > 40 and has_good_luck_charm_available(ctx):
+                        log.info("Failure rate above 40 and Good-Luck Charm available - attempting charm first")
+                        try:
+                            from module.umamusume.scenario.mant.inventory import use_item_and_update_inventory
+                            used_any = bool(use_item_and_update_inventory(ctx, "Good-Luck Charm"))
+                        except Exception as e:
+                            log.warning(f"Good-Luck Charm use failed: {e}")
 
-                    ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
-
-                    if use_items:
-                        handle_energy_recovery(ctx)
-                    else:
-                        # Training not good enough to justify using items - fall back to race/outing/rest
-                        available_races = getattr(ctx.cultivate_detail.turn_info, 'cached_available_races', [])
-                        extra_race_this_turn = [rid for rid in ctx.cultivate_detail.extra_race_list if rid in available_races]
-                        if extra_race_this_turn:
-                            log.info(f"Skipping energy items - racing instead (race {extra_race_this_turn[0]})")
-                            op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_RACE
-                            op.race_id = extra_race_this_turn[0]
-                            ctx.cultivate_detail.turn_info.turn_operation = op
+                        if used_any:
+                            log.info("Good-Luck Charm used - returning to main menu so training can be rescanned")
+                            ctx.cultivate_detail.turn_info.parse_train_info_finish = False
+                            ctx.cultivate_detail.turn_info.cached_training_type = None
+                            ctx.cultivate_detail.turn_info.turn_operation = None
                             ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
                             return
-                        elif should_use_pal_outing_simple(ctx):
-                            log.info("Skipping energy items - using pal outing instead")
-                            op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_TRIP
-                            ctx.cultivate_detail.turn_info.turn_operation = op
-                            ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
-                            return
+
+                    # 2) If charm path did not run or did not succeed, only consider energy items
+                    #    when inventory can raise energy to at least 45
+                    if (not used_any) and getattr(ctx.cultivate_detail.turn_info, 'energy_recovery_deferred', False):
+                        if can_reach_energy_threshold_with_items(ctx, 45):
+                            log.info("Energy items can raise energy to 45+ - attempting deferred energy recovery")
+                            try:
+                                from module.umamusume.scenario.mant.inventory import handle_energy_recovery
+                                used_any = bool(handle_energy_recovery(ctx))
+                            except Exception as e:
+                                log.warning(f"Deferred energy recovery failed: {e}")
+
+                            if used_any:
+                                log.info("Energy item used - returning to main menu so training can be rescanned")
+                                ctx.cultivate_detail.turn_info.parse_train_info_finish = False
+                                ctx.cultivate_detail.turn_info.cached_training_type = None
+                                ctx.cultivate_detail.turn_info.turn_operation = None
+                                ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
+                                return
                         else:
-                            log.info("Skipping energy items - resting instead")
-                            op.turn_operation_type = TurnOperationType.TURN_OPERATION_TYPE_REST
-                            ctx.cultivate_detail.turn_info.turn_operation = op
-                            ctx.ctrl.click_by_point(RETURN_TO_CULTIVATE_MAIN_MENU)
-                            return
+                            log.info("Energy items cannot raise energy to 45+ - skipping energy recovery")
 
+                    # 3) No charm use and no sufficient energy recovery -> fall back exactly as bad training logic
+                    ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
+                    if fallback_from_bad_training(ctx, op):
+                        return
+
+                # If failure rate is acceptable, continue into normal item_loop / training flow
                 ctx.cultivate_detail.turn_info._pre_item_tier = getattr(ctx.cultivate_detail, 'mant_megaphone_tier', 0)
                 ctx.cultivate_detail.turn_info._pre_item_turns = getattr(ctx.cultivate_detail, 'mant_megaphone_turns', 0)
 

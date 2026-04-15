@@ -14,7 +14,7 @@ from module.umamusume.asset.point import (
 )
 from module.umamusume.asset.template import (
     REF_RACE_LIST, REF_RACE_LIST_GOAL_RACE, REF_RACE_LIST_URA_RACE,
-    REF_SUITABLE_RACE, REF_TRAIN_BTN
+    REF_SUITABLE_RACE, REF_TRAIN_BTN, UI_BEFORE_RACE_1
 )
 from module.umamusume.script.cultivate_task.parse import parse_date, find_race
 
@@ -349,10 +349,35 @@ def script_cultivate_in_race_uma_list(ctx: UmamusumeContext):
 def script_in_race(ctx: UmamusumeContext):
     ctx.ctrl.click_by_point(IN_RACE_SKIP)
 
-
 def script_cultivate_race_result(ctx: UmamusumeContext):
+    # Replace with your measured coordinates
+    TRY_AGAIN_BUTTON = (311, 1199)
+    TRY_AGAIN_CONFIRM = (600, 1210)
+
+    if not hasattr(ctx.cultivate_detail, "alarm_clock_uses"):
+        ctx.cultivate_detail.alarm_clock_uses = 0
+
+    if ctx.cultivate_detail.alarm_clock_uses < 5:
+        log.info(f"Attempting alarm clock retry click at {TRY_AGAIN_BUTTON}. Current detected uses: {ctx.cultivate_detail.alarm_clock_uses}")
+        ctx.ctrl.click(*TRY_AGAIN_BUTTON, "Try Again")
+        time.sleep(0.3)
+
+        log.info(f"Attempting alarm clock confirmation click at {TRY_AGAIN_CONFIRM}.")
+        ctx.ctrl.click(*TRY_AGAIN_CONFIRM, "Alarm Clock Confirm")
+        time.sleep(0.8)
+
+        img_gray = ctx.ctrl.get_screen(to_gray=True)
+        if image_match(img_gray, UI_BEFORE_RACE_1).find_match:
+            log.info("Alarm clock retry succeeded; returned to before-race screen.")
+            ctx.cultivate_detail.alarm_clock_uses += 1
+            return
+
+        log.info("Alarm clock retry not used; continuing normal result flow.")
+
+    log.info("Proceeding with normal race result confirmation.")
     ctx.ctrl.click_by_point(RACE_RESULT_CONFIRM)
 
 
 def script_cultivate_race_reward(ctx: UmamusumeContext):
+    log.info("Proceeding with normal race reward confirmation.")
     ctx.ctrl.click_by_point(RACE_REWARD_CONFIRM)

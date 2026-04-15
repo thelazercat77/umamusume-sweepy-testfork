@@ -267,21 +267,45 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
                 energy = read_energy()
         if is_mant(ctx) and energy <= limit:
             ctx.cultivate_detail.turn_info.cached_energy = energy
+
             log.info(f"Energy at {round(energy, 2)} (below limit of {limit}), check if we have items to use.")
-            from module.umamusume.scenario.mant.inventory import has_energy_recovery
-            if has_energy_recovery(ctx):
-                log.info("Energy items available - deferring to check training quality first.")
-                ctx.cultivate_detail.turn_info.energy_recovery_deferred = True
-                base_energy, _, _ = scan_energy(ctx.ctrl)
-                ctx.cultivate_detail.turn_info.base_energy = base_energy
-                ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
-                return
-            elif has_extra_race:
-                # No energy items but there's a race available - go to race
-                log.info("Not enough energy to train and no energy items, prioritizing racing.")
+
+            from module.umamusume.scenario.mant.inventory import has_energy_recovery, has_charm
+
+            energy_items_avail = has_energy_recovery(ctx)
+            charms_avail = has_charm(ctx)
+
+            if has_extra_race:
+                from module.umamusume.scenario.mant.inventory import has_energy_recovery, handle_energy_recovery
+
+                if energy < 1 and has_energy_recovery(ctx):
+                    log.info("Race scheduled and energy < 1 - using energy recovery item before race.")
+                    if handle_energy_recovery(ctx):
+                        return
+
+                log.info("Race scheduled this turn - bypassing training quality check and going straight to race.")
                 ctx.cultivate_detail.turn_info.parse_train_info_finish = True
+                ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
+                ctx.cultivate_detail.turn_info.charm_deferred = False
                 is_summer = is_summer_camp_period(ctx.cultivate_detail.turn_info.date)
                 ctx.ctrl.click_by_point(get_race(ctx, summer=is_summer))
+                return
+
+            if energy_items_avail or charms_avail:
+
+                if energy_items_avail:
+                    log.info("Energy items available - deferring to check training quality first.")
+
+                if charms_avail:
+                    log.info("Amulets available - deferring to check training quality first.")
+
+                ctx.cultivate_detail.turn_info.energy_recovery_deferred = energy_items_avail
+                ctx.cultivate_detail.turn_info.charm_deferred = charms_avail
+
+                base_energy, _, _ = scan_energy(ctx.ctrl)
+                ctx.cultivate_detail.turn_info.base_energy = base_energy
+
+                ctx.ctrl.click_by_point(TO_TRAINING_SELECT)
                 return
         if energy <= limit:   
             if should_use_team_sirius_recreation(ctx):
@@ -296,6 +320,22 @@ def script_cultivate_main_menu(ctx: UmamusumeContext):
                 ctx.ctrl.click_by_point(CULTIVATE_REST)
             return
         else:
+            if is_mant(ctx) and has_extra_race:
+                from module.umamusume.scenario.mant.inventory import has_energy_recovery, handle_energy_recovery
+
+                if energy < 1 and has_energy_recovery(ctx):
+                    log.info("Race scheduled and energy < 1 - using energy recovery item before race.")
+                    if handle_energy_recovery(ctx):
+                        return
+
+                log.info("Race scheduled this turn with sufficient energy - bypassing training quality check and going straight to race.")
+                ctx.cultivate_detail.turn_info.parse_train_info_finish = True
+                ctx.cultivate_detail.turn_info.energy_recovery_deferred = False
+                ctx.cultivate_detail.turn_info.charm_deferred = False
+                is_summer = is_summer_camp_period(ctx.cultivate_detail.turn_info.date)
+                ctx.ctrl.click_by_point(get_race(ctx, summer=is_summer))
+                return
+
             base_energy, _, _ = scan_energy(ctx.ctrl)
             ctx.cultivate_detail.turn_info.base_energy = base_energy
             ctx.ctrl.click_by_point(TO_TRAINING_SELECT)

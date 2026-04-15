@@ -166,6 +166,18 @@ def handle_mant_shop_scan(ctx, current_date):
         owned = getattr(ctx.cultivate_detail, 'mant_owned_items', [])
         owned_map = {n: q for n, q in owned}
         has_miracle_cure = owned_map.get(AILMENT_CURE_ALL, 0) > 0
+        
+        ANKLE_WEIGHT_NAMES = {
+            "Speed Ankle Weights",
+            "Stamina Ankle Weights",
+            "Power Ankle Weights",
+            "Guts Ankle Weights",
+        }
+
+        def ankle_weight_capacity_left(display_name, planned_targets):
+            if display_name not in ANKLE_WEIGHT_NAMES:
+                return None
+            return max(0, 2 - owned_map.get(display_name, 0) - planned_targets.count(display_name))
 
         from module.umamusume.context import detected_portraits_log
         non_rainbow_count = 0
@@ -361,6 +373,15 @@ def handle_mant_shop_scan(ctx, current_date):
                     continue
 
                 actual_copies = 1 if display in all_cures or display == AILMENT_CURE_ALL else copies
+
+                planned_targets = priority_targets + tier_targets
+                cap_left = ankle_weight_capacity_left(display, planned_targets)
+                if cap_left is not None:
+                    actual_copies = min(actual_copies, cap_left)
+
+                if actual_copies <= 0:
+                    continue
+
                 for i in range(actual_copies):
                     remaining_after = budget - cost
                     if remaining_after < 0:
@@ -494,6 +515,19 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
 
     budget = ctx.cultivate_detail.mant_coins
     emergency_targets = []
+    owned_em = {n: q for n, q in getattr(ctx.cultivate_detail, 'mant_owned_items', [])}
+
+    ANKLE_WEIGHT_NAMES = {
+        "Speed Ankle Weights",
+        "Stamina Ankle Weights",
+        "Power Ankle Weights",
+        "Guts Ankle Weights",
+    }
+
+    def ankle_weight_capacity_left_em(display_name):
+        if display_name not in ANKLE_WEIGHT_NAMES:
+            return None
+        return max(0, 2 - owned_em.get(display_name, 0) - emergency_targets.count(display_name))
 
     mant_cfg = getattr(ctx.task.detail.scenario_config, 'mant_config', None)
     if mant_cfg and mant_cfg.item_tiers:
@@ -569,6 +603,11 @@ def handle_mant_emergency_shop_buys(ctx, current_date):
 
                     cost = SHOP_ITEM_COSTS.get(display, 9999)
                     copies = item_counts.get(display, 0)
+
+                    cap_left = ankle_weight_capacity_left_em(display)
+                    if cap_left is not None:
+                        copies = min(copies, cap_left)
+
                     if copies <= 0:
                         continue
 

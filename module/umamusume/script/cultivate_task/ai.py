@@ -239,15 +239,9 @@ def get_operation(ctx: UmamusumeContext) -> TurnOperation | None:
                 score += w_lv2
         training_score[idx] = score
 
-    if getattr(ctx.cultivate_detail, 'compensate_failure', True):
-        try:
-            for idx in range(5):
-                fr = int(getattr(turn_info.training_info_list[idx], 'failure_rate', -1))
-                if fr >= 0:
-                    mult = max(0.0, 1.0 - (float(fr) / 50.0))
-                    training_score[idx] *= mult
-        except Exception:
-            pass
+    # Failure rate is no longer applied during score generation.
+    # It is handled only after the best training has been selected.
+    pass
 
     log.debug("Overall training score: " + str(training_score))
 
