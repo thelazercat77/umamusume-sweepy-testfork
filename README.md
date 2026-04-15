@@ -1,5 +1,8 @@
 # Sweepy — /vg/'s Uma Musume Bot (UAT REHASHED)
 
+This is a fork of a fork. Testing some logic with retrying races, changing how items are used, and some safeguards to prevent skipping races.
+Following info is from previous README.
+
 This is a fork for Sweepy with a rewrite taken from [waivegames-oss/umamusume-sweepy](https://github.com/waivegames-oss/umamusume-sweepy). I'm not pulling in most upstream Sweepy changes by default since most of the time the changes are broken and untested. Feature parity may be delayed or I may not even pull in some changes made if they're too low quality. Half the time you're better off not updating from the upstream repo.
 
 Turn on auto-use items for MANT or the bot will break. You need to adjust the configurations as well but I don't have any good recommendations yet.
